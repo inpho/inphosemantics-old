@@ -1,0 +1,9 @@
+Platform dependencies:
+
+Python: numpy (developing with v. 1.4.1)
+Python: PyYAML (developing with v. 3.09)
+Python: NLTK (developing with v. 2.0.1rc1)
+Python: unidecode  (developing with v. 0.04.9)
+
+C: tidy (developing with 20091223cvs-1)
+FORTRAN: optimized LAPACK libraries (optional; developing with liblapack3gf and libblas3gf)
