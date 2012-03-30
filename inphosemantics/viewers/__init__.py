@@ -5,11 +5,11 @@ extstop = ['especially', 'many', 'several', 'perhaps',
            'might', 'must', 'would', 'may', 'actually', 'either',
            'without', 'one', 'also', 'neither']
 
-def mk_similar(lexicon, stopwords, cospath, filterstopwords = True, filterdegenerate = True):
+def mk_similar(lexicon, stopwords, cospath):
 
     stopwords = stopwords + extstop
 
-    def similar(word, n=-1):
+    def similar(word, n=-1, filterstopwords = True, filterdegenerate = True):
         # TODO: User friendly error handling
         i = lexicon.index(word)
         simvec = mk_read_simvec(cospath)(i)
