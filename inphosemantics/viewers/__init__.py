@@ -5,9 +5,11 @@ extstop = ['especially', 'many', 'several', 'perhaps',
            'might', 'must', 'would', 'may', 'actually', 'either',
            'without', 'one', 'also', 'neither']
 
-def mk_similar(lexicon, stopwords, cospath):
+def mk_similar(lexicon, stopwords, cospath, filterstopwords = True, filterdegenerate = True):
 
-    def similar(word):
+    stopwords = stopwords + extstop
+
+    def similar(word, n=-1):
         # TODO: User friendly error handling
         i = lexicon.index(word)
         simvec = mk_read_simvec(cospath)(i)
@@ -15,6 +17,21 @@ def mk_similar(lexicon, stopwords, cospath):
         pairs = zip(lexicon, simvec)
         print 'Sorting results'
         pairs.sort(key=lambda p: p[1], reverse = True)
+        
+
+        if filterdegenerate:
+            print 'Filtering degenerate vectors'
+            pairs = filter(lambda p: p[1] != -2, pairs)
+
+        if n != -1:
+            pairs = pairs[:(n + len(stopwords))]
+
+        if filterstopwords:
+            print 'Filtering stop words'
+            pairs = filter(lambda p: p[0] not in stopwords, pairs)
+
+        if n != -1:
+            pairs = pairs[:n]
 
         return pairs
 
@@ -23,17 +40,9 @@ def mk_similar(lexicon, stopwords, cospath):
 
 def mk_display_similar(lexicon, stopwords, cospath):
 
-    stopwords = stopwords + extstop
-
     def display_similar(word, n=20):
         
-        pairs = mk_similar(lexicon, stopwords, cospath)(word)
-        pairs = pairs[:(n + len(stopwords))]
-
-        print 'Filtering stop words'
-        pairs = filter(lambda p: p[0] not in stopwords, pairs)
-
-        pairs = pairs[:n]
+        pairs = mk_similar(lexicon, stopwords, cospath)(word, n=n)
 
         # TODO: Make pretty printer robust
         print ''.join(['-' for i in xrange(38)])
