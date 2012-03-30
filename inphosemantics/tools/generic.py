@@ -1,6 +1,9 @@
+from inphosemantics import *
 import re
 from xml.etree.ElementTree import *
 from unidecode import unidecode
+from nltk import TreebankWordTokenizer
+import nltk.data
 
 
 ######################################################################
@@ -254,3 +257,88 @@ def get_prefix(t):
         return ''
     else:
         return m.group(0)
+
+
+######################################################################
+#                    Load the plain text corpus
+#                     and dump tokenized corpus
+######################################################################
+
+
+stok = nltk.data.load('tokenizers/punkt/english.pickle')
+wtok = TreebankWordTokenizer()
+
+
+def mk_tok_corpus(path):
+    
+    tok_article = mk_tok_article(path)
+    plainpath = get_plainpath(path)
+
+    def tok_corpus():
+        
+        fs = os.listdir(plainpath)
+        for f in fs:
+            tok_article(f)
+            return
+
+    return tok_corpus
+
+
+def mk_tok_article(path):
+
+    read_plain = mk_read_plain(path)
+    write_tokens = mk_write_tokens(path)
+
+    def tok_article(filename):
+    
+        def st(para):
+            para = stok.tokenize(para, realign_boundaries=True)
+            para = map(lambda sent: tok_sent(sent), para)
+            para = [sent for sent in para if len(sent) > 1]
+            return para
+
+        text = read_plain(filename)
+    
+        paras = text.split('\n\n')
+        paras = map(st, paras)
+        paras = [para for para in paras if para]
+        
+        title = os.path.splitext(filename)[0]
+        write_tokens(paras, title)
+    
+        return        
+
+    return tok_article
+
+
+def tok_sent(sent):
+    
+    sent = rehyph(sent)
+    sent = wtok.tokenize(sent)
+    sent = [word.lower() for word in sent]
+    sent = strip_punc(sent)
+    sent = rem_num(sent)
+
+    return sent
+
+
+def strip_punc(tsent):
+    p1 = re.compile(r'^(\W*)')
+    p2 = re.compile(r'(\W*)$')
+    out = []
+    for word in tsent:
+        w = re.sub(p2, '', re.sub(p1, '', word))
+        if w:
+            out.append(w)
+    return out
+
+
+def rem_num(tsent):
+    p = re.compile(r'(^\D+$)|(^\D*[0-2]\d\D*$)')
+    return [word for word in tsent
+            if re.search(p, word)]
+
+
+def rehyph(sent):
+    return re.sub(r'(?P<x1>.)--(?P<x2>.)', '\g<x1> - \g<x2>', sent)
+
