@@ -1,5 +1,5 @@
 from inphosemantics import * 
-# from inphosemantics.tools import 
+from inphosemantics.tools import *
 
 extstop = ['especially', 'many', 'several', 'perhaps', 
            'various', 'key', 'found', 'particularly', 'later', 'could',
@@ -39,9 +39,22 @@ def mk_similar(lexicon, stopwords, cospath):
     return similar
 
 
-def parse_query(query):
-    pass
+def mk_parse_query(lexicon, stopwords):
+
+    stopwords = stopwords + extstop
+
+    def parse_query(query):
     
+        bag = tok_sent(query)
+        
+        print 'Filtering stop words'
+        bag = filter(lambda w: w not in stopwords, bag)
+        
+        print 'Final bag of words: {0}'.format(', '.join(bag)) 
+    
+        return
+    
+    return parse_query
 
 
 def mk_display_similar(lexicon, stopwords, cospath):
