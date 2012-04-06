@@ -1,4 +1,4 @@
-from generic import *
+from inphosemantics.tools import *
 
 
 def clean(tree, title):

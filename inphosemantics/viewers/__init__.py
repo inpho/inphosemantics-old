@@ -1,9 +1,11 @@
 from inphosemantics import * 
+# from inphosemantics.tools import 
 
 extstop = ['especially', 'many', 'several', 'perhaps', 
            'various', 'key', 'found', 'particularly', 'later', 'could',
            'might', 'must', 'would', 'may', 'actually', 'either',
            'without', 'one', 'also', 'neither']
+
 
 def mk_similar(lexicon, stopwords, cospath):
 
@@ -18,7 +20,6 @@ def mk_similar(lexicon, stopwords, cospath):
         print 'Sorting results'
         pairs.sort(key=lambda p: p[1], reverse = True)
         
-
         if filterdegenerate:
             print 'Filtering degenerate vectors'
             pairs = filter(lambda p: p[1] != -2, pairs)
@@ -36,6 +37,11 @@ def mk_similar(lexicon, stopwords, cospath):
         return pairs
 
     return similar
+
+
+def parse_query(query):
+    pass
+    
 
 
 def mk_display_similar(lexicon, stopwords, cospath):

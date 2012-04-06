@@ -1,1 +1,1 @@
-../../../iep/complete/corpus/__init__.py
+../../../corpusinit.py

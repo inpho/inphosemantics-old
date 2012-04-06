@@ -1,1 +1,1 @@
-__all__ = ['generic']
+from generic import *
