@@ -41,7 +41,7 @@ def gen_filename(modpath, base):
 def mk_read_lexicon(path):
     
     datapath = os.path.join(change_root(path, data), 'lexicon')
-    filename = gen_filename(change_root(path, ''), 'lexicon.pickle')
+    filename = gen_filename(os.path.dirname(change_root(path, '')), 'lexicon.pickle')
 
     def read_lexicon():
         print 'Reading lexicon'
@@ -55,7 +55,7 @@ def mk_read_lexicon(path):
 def mk_write_lexicon(path):
     
     datapath = os.path.join(change_root(path, data), 'lexicon')
-    filename = gen_filename(change_root(path, ''), 'lexicon.pickle')
+    filename = gen_filename(os.path.dirname(change_root(path, '')), 'lexicon.pickle')
 
     def write_lexicon(lexicon):
         path = os.path.join(datapath, filename)
