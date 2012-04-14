@@ -1,6 +1,7 @@
 import os.path
 import pickle
-from nltk.corpus import stopwords as nltk_stopwords
+
+from inphosemantics.corpus import Corpus
 
 
 class Model(Corpus):
@@ -57,19 +58,6 @@ class Model(Corpus):
             pairs = pairs[:n]
 
         return pairs
-
-    def display_similar(word, n=20):
-        
-        pairs = mk_similar(lexicon, stopwords, cospath)(word, n=n)
-
-        # TODO: Make pretty printer robust
-        print ''.join(['-' for i in xrange(38)])
-        print '{0:^25}{1:^12}'.format('Word','Similarity')
-        for w,v in pairs:
-            print '{0:<25}{1:^12.3f}'.format(w,float(v))
-        print ''.join(['-' for i in xrange(38)])
-            
-        return
 
 
     def print_similar(self, word, n=20):
