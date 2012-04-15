@@ -70,3 +70,15 @@ class Model(Corpus):
         print ''.join(['-' for i in xrange(38)])
             
         return
+
+    # TODO: Finish this
+    def parse_query(query):
+    
+        # bag = tok_sent(query)
+        
+        # print 'Filtering stop words'
+        # bag = filter(lambda w: w not in stopwords, bag)
+        
+        # print 'Final bag of words: {0}'.format(', '.join(bag)) 
+    
+        return
