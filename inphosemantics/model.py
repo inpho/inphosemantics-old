@@ -4,7 +4,7 @@ import pickle
 from inphosemantics.corpus import Corpus
 
 
-class Model(Corpus):
+class ModelBase(Corpus):
 
     def __init__(self, corpus, corpus_param, model, model_param):
 
@@ -16,6 +16,13 @@ class Model(Corpus):
         self.model_path =\
             os.path.join(Corpus.data_root, self.corpus, self.corpus_param,
                          self.model, self.model_param)
+
+
+class Model(ModelBase):
+
+    def __init__(self, corpus, corpus_param, model, model_param):
+
+        ModelBase.__init__(self, corpus, corpus_param, model, model_param)
 
 
     def sim_vec(self, index):
@@ -82,3 +89,4 @@ class Model(Corpus):
         # print 'Final bag of words: {0}'.format(', '.join(bag)) 
     
         return
+
