@@ -2,6 +2,8 @@ from multiprocessing import Pool
 import sys
 import os
 import pickle
+import tempfile
+import shutil
 import numpy as np
 from numpy.dual import fft, ifft
 
@@ -19,39 +21,87 @@ class BeagleBase(ModelBase):
         ModelBase.__init__(self, corpus, corpus_param, 
                            'beagle', model_param)
 
-        self.dimension = 2048
+        self.dimension = 64
         self.lmda = 7
 
+        self.vector_path = os.path.join(self.model_path, 'vectors')
 
-    def write_vector(self, vector):
-        pass
 
-    
+    def write_vector(self, vector, index):
+
+        vector_name = '-'.join([self.corpus, self.corpus_param,
+                                self.model, self.model_param, 
+                                'vector-' + str(index) + '.pickle'])
+        
+        vector_file = os.path.join(self.vector_path, vector_name)
+
+        # print 'Writing vector', index
+        with open(vector_file, 'w') as f:
+            pickle.dump(vector, f)
+
+        return
+
+
+    def vector(self, index):
+        
+        vector_name = '-'.join([self.corpus, self.corpus_param,
+                                self.model, self.model_param, 
+                                'vector-' + str(index) + '.pickle'])
+
+        vector_file = os.path.join(self.vector_path, vector_name)
+
+        # print 'Retrieving vector', index
+        with open(vector_file, 'r') as f:
+            return pickle.load(f)
+
+
     def write_vectors(self, vectors):
         
-        vectors_name = '-'.join([self.corpus, self.corpus_param, self.model,
-                                 self.model_param, 'vectors.pickle'])
-        vectors_file = os.path.join(self.model_path, vectors_name)
+        print 'Writing vectors to', self.vector_path
 
-        print 'Writing vectors'
-        with open(vectors_file, 'w') as f:
-            pickle.dump(vectors, f)
-            return
+        for i in xrange(len(vectors)):
+            self.write_vector(vectors[i], i)
 
+        return
+            
 
-    def vector(self):
-        pass
+    def vectors(self):
+        
+        vector_files = os.listdir(self.vector_path)
+        
+        vectors = np.zeros((len(vector_files), self.dimension), 
+                           dtype=np.float32)
+
+        print 'Retrieving vectors from', self.vector_path
+
+        for i,vector_file in enumerate(vector_files):
+            vectors[i] += self.vector(i)
+
+        return vectors
 
     
-    def vectors(self):
+    # def write_vectors(self, vectors):
+        
+    #     vectors_name = '-'.join([self.corpus, self.corpus_param, self.model,
+    #                              self.model_param, 'vectors.pickle'])
+    #     vectors_file = os.path.join(self.model_path, vectors_name)
 
-        vectors_name = '-'.join([self.corpus, self.corpus_param, self.model,
-                                 self.model_param, 'vectors.pickle'])
-        vectors_file = os.path.join(self.model_path, vectors_name)
+    #     print 'Writing vectors'
+    #     with open(vectors_file, 'w') as f:
+    #         pickle.dump(vectors, f)
 
-        print 'Reading vectors'
-        with open(vectors_file, 'r') as f:
-            return pickle.load(f)
+    #     return
+
+    
+    # def vectors(self):
+
+    #     vectors_name = '-'.join([self.corpus, self.corpus_param, self.model,
+    #                              self.model_param, 'vectors.pickle'])
+    #     vectors_file = os.path.join(self.model_path, vectors_name)
+
+    #     print 'Reading vectors'
+    #     with open(vectors_file, 'r') as f:
+    #         return pickle.load(f)
 
 
 
@@ -89,39 +139,49 @@ class BeagleContext(BeagleBase):
     def gen_vectors(self):
 
         # Make lexicon a dictionary for rapid reverse look-up
-        doc_context.lexicon =\
+        context_fn.lexicon =\
             dict(zip(self.lexicon, xrange(len(self.lexicon))))
 
         # Encode stop words as indices in the lexicon
-        doc_context.stopwords =\
-            [doc_context.lexicon[word] for word in self.stopwords]
+        context_fn.stopwords =\
+            [context_fn.lexicon[word] for word in self.stopwords]
 
         # Retrieve environment vectors
-        doc_context.envecs =\
+        context_fn.envecs =\
             BeagleEnvironment(self.corpus, self.corpus_param).vectors()
 
         # Pass the context function a function to read tokenized
         # sentences
-        doc_context.tokenized_sentences = self.tokenized_sentences
+        context_fn.tokenized_sentences = self.tokenized_sentences
 
-        doc_context.dimension = self.dimension
+        context_fn.dimension = self.dimension
+
+        context_fn.temp_dir = tempfile.mkdtemp()
 
         #TODO: this path and others should be attributes of Corpus
         #instances
         tok_path = os.path.join(self.corpus_path, 'tokenized')
 
         docs = os.listdir(tok_path)
-
-        memvecs = np.zeros((len(self.lexicon), self.dimension))
         
         p = Pool()
-        results = p.map(doc_context, docs, 2)
+        results = p.map(context_fn, docs, 2)
         p.close()
 
         # Reduce
-        for result in results:
+        memvecs = np.zeros((len(self.lexicon), self.dimension))
+        for tmp_file in results:
+
+            print 'Reducing', tmp_file
+
+            with open(tmp_file, 'r+') as f:
+                result = pickle.load(f)
+
             for word,vec in result.iteritems():
                 memvecs[word] = memvecs[word] + vec
+
+        # Clean up
+        shutil.rmtree(context_fn.temp_dir)
         
         self.write_vectors(memvecs)
         
@@ -131,13 +191,14 @@ class BeagleContext(BeagleBase):
 # A natural place for this function would be in the BeagleContext
 # class; however, multiprocessing does not allow for this. Here's a
 # work around.
-def doc_context(name):
+def context_fn(name):
 
-    tokenized_sentences = doc_context.tokenized_sentences
-    lexicon = doc_context.lexicon
-    stopwords = doc_context.stopwords
-    envecs = doc_context.envecs
-    dimension = doc_context.dimension
+    tokenized_sentences = context_fn.tokenized_sentences
+    lexicon = context_fn.lexicon
+    stopwords = context_fn.stopwords
+    envecs = context_fn.envecs
+    dimension = context_fn.dimension
+    temp_dir = context_fn.temp_dir
 
     sents = tokenized_sentences(name)
     def encode(sent):
@@ -154,9 +215,12 @@ def doc_context(name):
                 if ctxword not in stopwords:
                     memvecs[word] += envecs[ctxword]
                     
-    print 'Processed', name
+    tmp_file = os.path.join(temp_dir, 'context-' + name + '.tmp')
+    with open(tmp_file, 'w') as f:
+        pickle.dump(memvecs, f)
 
-    return memvecs
+    return tmp_file
+
 
 
 
@@ -166,67 +230,83 @@ class BeagleOrder(BeagleBase):
 
         BeagleBase.__init__(self, corpus, corpus_param, 'order')
         
-    def gen_vecs(self):
+    def gen_vectors(self):
 
         # Make lexicon a dictionary for rapid reverse look-up
-        doc_order.lexicon =\
+        order_fn.lexicon =\
             dict(zip(self.lexicon, xrange(len(self.lexicon))))
 
         # Encode stop words as indices in the lexicon
-        doc_order.stopwords =\
-            [doc_order.lexicon[word] for word in self.stopwords]
+        order_fn.stopwords =\
+            [order_fn.lexicon[word] for word in self.stopwords]
 
         # Retrieve environment vectors
-        doc_order.envecs =\
+        order_fn.envecs =\
             BeagleEnvironment(self.corpus, self.corpus_param).vectors()
 
         # Pass the context function a function to read tokenized
         # sentences
-        doc_order.tokenized_sentences = self.tokenized_sentences
+        order_fn.tokenized_sentences = self.tokenized_sentences
 
-        doc_order.dimension = self.dimension
+        order_fn.dimension = self.dimension
+        order_fn.lmda = self.lmda
+
+        order_fn.temp_dir = tempfile.mkdtemp()
+
 
         #TODO: this path and others should be attributes of Corpus
         #instances
         tok_path = os.path.join(self.corpus_path, 'tokenized')
 
         print 'Computing DFTs of environment vectors'
-        doc_order.fftenvecs = map(fft, envecs)
+        order_fn.fftenvecs = map(fft, order_fn.envecs)
         
-        doc_order.placeholder =\
-            fft(RandomWordGen(d=dimension).make_rep(''))
+        order_fn.placeholder =\
+            fft(RandomWordGen(d=self.dimension).make_rep(''))
 
 
         docs = os.listdir(tok_path)
         q = Pool()
-        results = q.map(doc_order, docs, 2)
+        results = q.map(order_fn, docs, 2)
         q.close()
-
 
         # Reduce
         memvecs = np.zeros((len(self.lexicon), self.dimension))
-        for result in results:
+        for tmp_file in results:
+
+            print 'Reducing', tmp_file
+
+            with open(tmp_file, 'r+') as f:
+                result = pickle.load(f)
+
             for word,vec in result.iteritems():
                 memvecs[word] = memvecs[word] + vec
 
-        write_vecs(memvecs)
+        # Clean up
+        shutil.rmtree(order_fn.temp_dir)
+
+        self.write_vectors(memvecs)
+
         return
+
 
 
 # A natural place for this function would be in the BeagleOrder
 # class; however, multiprocessing does not allow for this. Here's a
 # work around.
-def doc_order(name):
+def order_fn(name):
 
-    tokenized_sentences = doc_order.tokenized_sentences
-    lexicon = doc_order.lexicon
-    stopwords = doc_order.stopwords
-    envecs = doc_order.envecs
-    dimension = doc_order.dimension
-    fftenvecs = doc_order.fftenvecs
-    placeholder = doc_order.placeholder
+    tokenized_sentences = order_fn.tokenized_sentences
+    lexicon = order_fn.lexicon
+    stopwords = order_fn.stopwords
+    envecs = order_fn.envecs
+    dimension = order_fn.dimension
+    lmda = order_fn.lmda
+    fftenvecs = order_fn.fftenvecs
+    placeholder = order_fn.placeholder
+    temp_dir = order_fn.temp_dir
     
-    sents = read_sentences(name)
+    sents = tokenized_sentences(name)
     def encode(sent):
         return [lexicon[word] for word in sent]
     sents = [encode(sent) for sent in sents]
@@ -251,7 +331,13 @@ def doc_order(name):
                 
                 memvecs[word] += ordvec
 
-    return memvecs
+
+    tmp_file = os.path.join(temp_dir, 'order-' + name + '.tmp')
+    with open(tmp_file, 'w') as f:
+        pickle.dump(memvecs, f)
+
+    return tmp_file
+
 
 
 
