@@ -17,24 +17,23 @@ class CorpusBase(object):
             os.path.join(Corpus.data_root, self.corpus, 
                          self.corpus_param, 'corpus')
 
+        self.tokenized_path = os.path.join(self.corpus_path, 'tokenized')
+        self.plain_path = os.path.join(self.corpus_path, 'plain')
+
 
     def tokenized_sentences(self, name):
-
-        tok_path = os.path.join(self.corpus_path, 'tokenized')
 
         if os.path.splitext(name)[1] != '.pickle':
             name += '.pickle'
 
-        tok_file = os.path.join(tok_path, name)
+        tokenized_file = os.path.join(tokenized_path, name)
 
-        print 'Reading tokenized sentences from', tok_file
-        with open(tok_file, 'r') as f:
+        print 'Reading tokenized sentences from', tokenized_file
+        with open(tokenized_file, 'r') as f:
             return [sent for para in pickle.load(f) for sent in para]
 
     
     def plain_text(self, name):
-
-        plain_path = os.path.join(self.corpus_path, 'plain')
 
         if os.path.splitext(name)[1] != '.txt':
             name = name + '.txt'

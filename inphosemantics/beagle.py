@@ -21,7 +21,7 @@ class BeagleBase(ModelBase):
         ModelBase.__init__(self, corpus, corpus_param, 
                            'beagle', model_param)
 
-        self.dimension = 64
+        self.dimension = 2048
         self.lmda = 7
 
         self.vector_path = os.path.join(self.model_path, 'vectors')

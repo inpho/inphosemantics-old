@@ -2,7 +2,7 @@ import os.path
 import pickle
 
 from inphosemantics.corpus import Corpus
-
+from inphosemantics.tokenizer import Tokenizer
 
 class ModelBase(Corpus):
 
@@ -16,7 +16,9 @@ class ModelBase(Corpus):
         self.model_path =\
             os.path.join(Corpus.data_root, self.corpus, self.corpus_param,
                          self.model, self.model_param)
-
+            
+        self.vector_path = os.path.join(self.model_path, 'vectors')
+            
 
 class Model(ModelBase):
 
@@ -78,15 +80,25 @@ class Model(ModelBase):
             
         return
 
-    # TODO: Finish this
-    def parse_query(query):
+
+    # TODO: Add holographic compression
+    def process_query(query):
     
-        # bag = tok_sent(query)
+        bag_words = Tokenizer(self.corpus,
+                              self.corpus_param).tok_sent(query)
         
-        # print 'Filtering stop words'
-        # bag = filter(lambda w: w not in stopwords, bag)
+        print 'Filtering stop words'
+        bag_words = filter(lambda w: w not in self.stopwords,
+                           bag_words)
         
-        # print 'Final bag of words: {0}'.format(', '.join(bag)) 
-    
-        return
+        print 'Final bag of words: {0}'.format(', '.join(bag_words))
+
+        bag_indices = [self.lexicon.index(word) for word in bag_words]
+        
+        bag_vectors = [self.vector(i) for i in bag_indices]
+
+        vector_sum = reduce(lambda w, v: w + v, bag_vectors)
+
+        return vector_sum
+
 

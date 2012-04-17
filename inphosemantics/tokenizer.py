@@ -23,10 +23,8 @@ class Tokenizer(CorpusBase):
 
 
     def tok_corpus(self):
-
-        plain_path = os.path.join(self.corpus_path, 'plain')
         
-        fs = os.listdir(plain_path)
+        fs = os.listdir(self.plain_path)
         for f in fs:
             name = os.path.splitext(f)[0]
             self.tok_article(name)
@@ -36,8 +34,7 @@ class Tokenizer(CorpusBase):
 
     def write_tokens(self, sents, name):
 
-        tok_file = os.path.join(self.corpus_path, 
-                                'tokenized', name + '.pickle')
+        tok_file = os.path.join(self.tokenized_path, name + '.pickle')
 
         print 'Writing tokenized paragraphs and sentences to', tok_file
         with open(tok_file, 'w') as f:
