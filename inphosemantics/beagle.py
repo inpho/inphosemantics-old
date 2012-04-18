@@ -69,7 +69,7 @@ class BeagleBase(ModelBase):
 
     def vectors(self):
 
-        if self.stored_vectors:
+        if self.stored_vectors != None:
 
             return self.stored_vectors
 
@@ -82,8 +82,23 @@ class BeagleBase(ModelBase):
 
             print 'Retrieving vectors from', self.vector_path
 
+            sys.stdout.write('Retrieved vector ')
+            progress = ''
+
             for i,vector_file in enumerate(vector_files):
+                
+                # Progress meter
+                for char in progress:
+                    sys.stdout.write('\b')
+                progress = (str(i+1) + ' of ' + str(len(vector_files)))
+                sys.stdout.write(progress)
+                sys.stdout.flush()
+
                 vectors[i] += self.vector(i)
+            
+            print 
+
+            self.stored_vectors = vectors
 
             return vectors
 
