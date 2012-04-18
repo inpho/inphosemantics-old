@@ -26,6 +26,8 @@ class BeagleBase(ModelBase):
 
         self.vector_path = os.path.join(self.model_path, 'vectors')
 
+        self.stored_vectors = None
+
 
     def write_vector(self, vector, index):
 
@@ -66,18 +68,24 @@ class BeagleBase(ModelBase):
             
 
     def vectors(self):
+
+        if self.stored_vectors:
+
+            return self.stored_vectors
+
+        else:
         
-        vector_files = os.listdir(self.vector_path)
+            vector_files = os.listdir(self.vector_path)
         
-        vectors = np.zeros((len(vector_files), self.dimension), 
+            vectors = np.zeros((len(vector_files), self.dimension), 
                            dtype=np.float32)
 
-        print 'Retrieving vectors from', self.vector_path
+            print 'Retrieving vectors from', self.vector_path
 
-        for i,vector_file in enumerate(vector_files):
-            vectors[i] += self.vector(i)
+            for i,vector_file in enumerate(vector_files):
+                vectors[i] += self.vector(i)
 
-        return vectors
+            return vectors
 
     
     # def write_vectors(self, vectors):
