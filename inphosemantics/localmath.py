@@ -25,19 +25,43 @@ def vector_cos(v,w):
         return np.dot(v,w) / (norm(v) * norm(w))
 
 
-class RandomWordGen:
-    def __init__(self, d = 1024, seed = None, *args):
-        self.d = d
+class RandomVectors(object):
+
+    def __init__(self, dimension):
+        self.dimension = dimension
         self.start = np.random.randint(sys.maxint)
     
-    def make_rep(self, word):
+    def meaning_vector(self, word):
+
         np.random.seed(self.start ^ abs(hash(word)))
-        return normalize(np.random.randn(self.d))
+        
+        vector = normalize(np.random.randn(self.dimension))
+        
+        return vector
 
 
-def init_gen_randvec(dimension):
-    gen_randvec.randgen = RandomWordGen(d = dimension)
+class RandomPermutations(object):
+    
+
+    def __init__(self, dimension, n):
+
+        np.random.seed()
+        
+        self.permutations = dict()
+
+        for i in xrange(n):
+            
+            idx_array = np.random.permutation(dimension)
+            
+            self.permutations[i+1] = self.mk_permutation(idx_array)
 
 
-def gen_randvec(word):
-    return gen_randvec.randgen.make_rep(word)
+    @staticmethod
+    def mk_permutation(idx_array):
+        
+        def p(vector):
+            return vector[idx_array]
+
+        return p
+        
+    
