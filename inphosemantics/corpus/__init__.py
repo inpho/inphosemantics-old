@@ -42,7 +42,13 @@ class CorpusBase(object):
 
         print 'Reading tokenized paragraphs from', tokenized_file
         with open(tokenized_file, 'r') as f:
-            return pickle.load(f)
+            
+            document = pickle.load(f)
+
+            for i,paragraph in enumerate(document):
+                document[i] = [word for sent in paragraph for word in sent]
+
+            return document
 
     
     def plain_text(self, name):

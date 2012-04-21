@@ -5,6 +5,7 @@ import pickle
 import tempfile
 import shutil
 import numpy as np
+from math import log
 
 from inphosemantics.model.vectorspacemodel import VectorSpaceModel
 
@@ -15,17 +16,127 @@ class Lsa(VectorSpaceModel):
         VectorSpaceModel.__init__(self, corpus, corpus_param,
                                   'lsa', model_param)
 
-    # count the paragraphs in all the documents
-    def compute_dimension(self):
+        self.set_document_dict()
+        self.set_n_documents()
+        
 
-        paragraph_count = 0
+    def get_document_dict(self):
+        return self._document_dict
 
+    def set_document_dict(self):
+        
+        # the keys in the document list are indices. The values are
+        # pairs: (name corresponding to file, index within file)
+
+        doc_list = []
+        
         for name in os.listdir(self.tokenized_path):
-            paragraph_count += len(self.tokenized_paragraphs(name))
+            for i,paragraph in\
+                    enumerate(self.tokenized_paragraphs(name)):                
+                doc_list.append((name, i))
 
-        return paragraph_count
+        self._document_dict = dict(zip(xrange(len(doc_list)), doc_list))
+        
+        return
+
+    document_dict = property(get_document_dict, set_document_dict)
+
+
+    def get_n_documents(self):
+        
+        return self._n_documents
+
+        
+    def set_n_documents(self):
+
+        self._n_documents = len(self.document_dict)
+
+        return
+
+    n_documents = property(get_n_documents, set_n_documents)
+
+
+    # Each vector is a column vector corresponding to a paragraph
+
+    # Pass 1: perform term-document counts and store vectors
+
+    # Pass 2: compute tfidfs and replace vectors
+
+    # Pass 3: perform svd and replace vectors
+
+    def first_pass(self):
+
+        docs = os.listdir(self.tokenized_path)
+
+        first_pass_fn.tokenized_paragraphs = self.tokenized_paragraphs
+        first_pass_fn.lexicon = \
+            dict(zip(self.lexicon, xrange(len(self.lexicon))))
+        
+        rev_document_alist =\
+            [(val,key) for (key,val) in self.document_dict.items()]
+        first_pass_fn.rev_document_dict = dict(rev_document_alist)
+        
+        first_pass_fn.write_vector = self.write_vector
+
+        p = Pool()
+        p.map(first_pass_fn, docs, 2)
+        p.close()
+
+        return
+
+
+    def second_pass(self):
+        
+        df = np.zeros(len(self.lexicon))
+
+        for i in xrange(self.n_documents):
+            for term_index in self.vector(i):
+                df[term_index] += 1
+                
+        for i in xrange(self.n_documents):
+            
+            sparse_vector = self.vector(i)
+            
+            for index,value in sparse_vector.iteritems():
+            
+                sparse_vector[index] *= log(self.n_documents / df[index])
+            
+            self.write_vector(sparse_vector, i)
+            
+        return
 
 
     def gen_vectors(self):
         
-        pass
+        self.first_pass()
+        self.second_pass()
+
+        return
+
+
+def first_pass_fn(name):
+    
+    tokenized_paragraphs = first_pass_fn.tokenized_paragraphs
+    lexicon = first_pass_fn.lexicon
+    rev_document_dict = first_pass_fn.rev_document_dict
+    write_vector = first_pass_fn.write_vector
+    
+    paragraphs = tokenized_paragraphs(name)
+
+    for i,para in enumerate(paragraphs):
+        
+        # Homebrew sparse vector: dictionary with indices as keys and
+        # vector components as values
+        sparse_vector = dict()
+        
+        for word in para:
+            if lexicon[word] in sparse_vector:
+                sparse_vector[lexicon[word]] += 1
+            else:
+                sparse_vector[lexicon[word]] = 1
+
+        write_vector(sparse_vector, rev_document_dict[(name, i)])
+
+    return
+    
+    

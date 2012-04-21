@@ -18,10 +18,13 @@ class VectorSpaceModel(ModelBase):
         ModelBase.__init__(self, corpus, corpus_param,
                            model, model_param)
 
+        
+        #TODO: Move this into Beagle
         self.dimension = 2048
 
         self.vector_path = os.path.join(self.model_path, 'vectors')
 
+        #TODO: set up getter and setter correctly 
         self.stored_vectors = None
 
 
