@@ -27,4 +27,5 @@ setup(
         "numpy>=1.4.0,<=1.4.99",
         "nltk>=2.0.0"
     ],
+    packages=['inphosemantics']
 )
