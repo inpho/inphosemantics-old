@@ -5,6 +5,9 @@ import pickle
 import tempfile
 import shutil
 import numpy as np
+from scipy.sparse import lil_matrix
+from sparsesvd import sparsesvd
+
 from math import log
 
 from inphosemantics.model.vectorspacemodel import VectorSpaceModel
@@ -100,10 +103,53 @@ class Lsa(VectorSpaceModel):
             for index,value in sparse_vector.iteritems():
             
                 sparse_vector[index] *= log(self.n_documents / df[index])
-            
+                sparse_vector[index] = np.float32(sparse_vector[index])
+
             self.write_vector(sparse_vector, i)
             
         return
+
+    def third_pass(self):
+
+        # Assemble sparse matrix
+
+        td_matrix = lil_matrix((len(self.lexicon), self.n_documents),
+                                   dtype=np.float32)
+        
+        for col in xrange(self.n_documents):
+            
+            sparse_vector = self.vector(col)
+            
+            for row,value in sparse_vector.iteritems():
+
+                # print 'Matrix shape:', td_matrix.shape
+                # print 'Current index:', row, col
+
+                td_matrix[row, col] = value
+
+        td_matrix = td_matrix.tocsc()
+       
+        td_matrix_file = os.path.join(self.model_path, 'td-matrix.pickle')
+
+        with open(td_matrix_file, 'w') as f:
+            
+            pickle.dump(td_matrix, f)
+
+        # Run sparse svd
+
+        k = 500
+
+        ut, s, vt = sparsesvd(td_matrix, 500)
+
+        print 'term vectors shape:', ut.shape
+        print 'eigenvalue matrix shape:', s.shape
+        print 'document vectors shape:', vt.shape
+        
+        #TODO Organize vectors in directories, etc.
+
+
+        return
+        
 
 
     def gen_vectors(self):

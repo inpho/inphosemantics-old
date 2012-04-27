@@ -115,12 +115,30 @@ class VectorSpaceModel(ModelBase):
         return np.array(similarity_vector, dtype=np.float32)
 
 
-    def similar(self, query, n=-1, 
+    def similar(self, query, n=-1, operator='avg_cosines',
                 filter_stopwords = True, filter_degenerate = True):
 
         # TODO: User friendly error handling
-        query_vector = self.process_query(query)
-        similarity_vector = self.compute_cosines(query_vector)
+        query_vectors = self.process_query(query)
+
+        if operator == 'avg_cosines':
+            
+            sim_vectors = [self.compute_cosines(v) 
+                           for v in query_vectors]
+            similarity_vector = reduce(lambda w, v: w + v, sim_vectors)
+            similarity_vector = similarity_vector / len(sim_vectors)
+
+        elif operator == 'convolve':
+            pass
+
+        elif operator == 'sum_vectors':
+            normed_vectors = [normalize(v) for v in query_vectors]
+            vector_sum = reduce(lambda w, v: w + v, normed_vectors)
+            similarity_vector = self.compute_cosines(vector_sum)
+
+        else:
+            raise Exception('Unrecognized operator name')
+
         
         pairs = zip(self.lexicon, similarity_vector)
         print 'Sorting results'
@@ -143,9 +161,9 @@ class VectorSpaceModel(ModelBase):
         return pairs
 
 
-    def print_similar(self, word, n=20):
+    def print_similar(self, word, n=20, operator='avg_cosines'):
     
-        pairs = self.similar(word, n=n)
+        pairs = self.similar(word, n=n, operator=operator)
 
         # TODO: Make pretty printer robust
         print ''.join(['-' for i in xrange(38)])
@@ -157,8 +175,7 @@ class VectorSpaceModel(ModelBase):
         return
 
 
-    # TODO: Add holographic compression
-    def process_query(self, query, convolve=False):
+    def process_query(self, query):
     
         bag_words = Tokenizer(self.corpus,
                               self.corpus_param).tok_sent(query)
@@ -179,15 +196,7 @@ class VectorSpaceModel(ModelBase):
         
         print 'Final word sequence: {0}'.format(', '.join(bag_words))
 
-        normed_vectors = [normalize(v) for v in bag_vectors]
-
-        if convolve:
-            pass
-        else:
-            print 'Results based on vector sum (\'bag of words\').'
-            result = reduce(lambda w, v: w + v, normed_vectors)
-
-        return result
+        return bag_vectors
 
 
 def cosine_fn(vector2):

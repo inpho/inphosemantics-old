@@ -123,7 +123,7 @@ class Corpus(CorpusBase):
              'since', 'regarded', 'indeed', 'however', 'rather',
              'ultimately', 'yet', 'according', 'nevertheless', 'finally',
              'concerning', 'cf', 'seen', 'primarily', 'conversely',
-             'relatedly']
+             'relatedly', 'subsequent']
 
         print 'Reading stop words'
 
