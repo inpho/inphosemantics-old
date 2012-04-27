@@ -7,3 +7,4 @@ class TfIdfModel(TermFrequencyModel):
         TermFrequencyModel.__init__(self, corpus, corpus_param,
                                     'tfidf', model_param)
 
+

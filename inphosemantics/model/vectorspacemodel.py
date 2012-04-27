@@ -4,7 +4,7 @@ import pickle
 from multiprocessing import Pool
 import numpy as np
 from numpy.dual import fft, ifft
-
+ 
 from inphosemantics.model import ModelBase
 from inphosemantics.corpus import Corpus
 from inphosemantics.corpus.tokenizer import Tokenizer
