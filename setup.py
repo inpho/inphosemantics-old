@@ -9,7 +9,7 @@ setup(
     author_email = "inpho@indiana.edu",
     url = "http://inpho.cogs.indiana.edu/",
     download_url = "http://www.github.com/inpho/inphosemantics",
-    keywords = ["taxonomy", "ontology"],
+    keywords = [],
     classifiers = [
         "Programming Language :: Python",
         "Programming Language :: Python :: 2",
@@ -27,5 +27,9 @@ setup(
         "numpy>=1.4.0,<=1.4.99",
         "nltk>=2.0.0"
     ],
-    packages=['inphosemantics']
+    packages=['inphosemantics', 'inphosemantics.corpus',
+              'inphosemantics.model'],
+    data_files=[('inphosemantics/corpus',
+                 ['inphosemantics/corpus/beagle-stopwords-jones.txt'])]
+
 )
