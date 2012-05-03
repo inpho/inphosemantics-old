@@ -186,3 +186,5 @@ def first_pass_fn(name):
     return
     
     
+class Lsa300(Lsa):
+    pass

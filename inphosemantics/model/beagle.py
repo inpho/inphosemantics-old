@@ -22,6 +22,8 @@ class BeagleBase(VectorSpaceModel):
                                   'beagle', model_param)
 
         self.lmda = 7
+        self.dimension = 2048
+
 
 
 class BeagleEnvironment(BeagleBase):
