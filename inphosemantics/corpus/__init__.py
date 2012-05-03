@@ -56,7 +56,7 @@ class CorpusBase(object):
         if os.path.splitext(name)[1] != '.txt':
             name = name + '.txt'
 
-        plain_file = os.path.join(plain_path, name)
+        plain_file = os.path.join(self.plain_path, name)
 
         print 'Loading plain text file for the article', '\'' + name + '\''
         with codecs.open(plain_file, encoding='utf-8', mode='r') as f:
