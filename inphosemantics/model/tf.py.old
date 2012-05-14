@@ -1,0 +1,372 @@
+import os.path
+import sys
+import pickle
+from multiprocessing import Pool
+import numpy as np
+from scipy.sparse import dok_matrix
+
+from inphosemantics.corpus import Corpus
+from inphosemantics.corpus.tokenizer import Tokenizer
+from inphosemantics.localmath import vector_cos, normalize
+from inphosemantics.model import ModelBase
+
+
+
+class TermFrequency(ModelBase):
+
+    def __init__(self, corpus, corpus_param, 
+                 model_param = 'default', train=False):
+        
+        #TODO: the train parameter may belong in ModelBase
+        ModelBase.__init__(self, corpus, corpus_param,
+                           'tf', model_param)
+
+        self.document_vector_path =\
+            os.path.join(self.model_path, 'document-vectors')
+
+        if train:
+            self.set_document_dict()
+            self.set_n_terms(len(self.lexicon))
+            self.set_n_documents(len(self.document_dict))
+        else:
+            self.set_n_terms()
+            self.set_n_documents()
+            self.set_term_document_matrix()
+
+
+    # Methods for computing, getting and setting the size of the
+    # term-document matrix
+    def get_n_terms(self):
+        return self._n_terms
+
+    def set_n_terms(self, n = -1):
+        
+        if n == -1:
+            self._n_terms = len(self.lexicon)
+        else:
+            self._n_terms = n
+
+    n_terms = property(get_n_terms, set_n_terms)
+
+
+    def get_n_documents(self):
+        return self._n_documents
+
+    def set_n_documents(self, n = -1):
+
+        if n == -1:
+            self._n_documents =\
+                len(os.listdir(self.document_vector_path))
+        else:
+            self._n_documents = n
+
+    n_documents = property(get_n_documents, set_n_documents)
+
+
+    # Methods for setting up a document dictionary (here a document is
+    # a paragraph in given tokenized text file.)
+    def get_document_dict(self):
+        return self._document_dict
+
+    def set_document_dict(self):
+        
+        # the keys in the document list are indices. The values are
+        # pairs: (name corresponding to file, index within file)
+
+        doc_list = []
+        
+        for name in os.listdir(self.tokenized_path):
+            for i,paragraph in enumerate(self.tokenized_paragraphs(name)):                
+                doc_list.append((name, i))
+
+        self._document_dict = dict(zip(xrange(len(doc_list)), doc_list))
+        
+        return
+
+    document_dict = property(get_document_dict, set_document_dict)
+
+
+
+    # Methods for storing and retrieving sets of vectors in/from
+    # runtime memory
+    def get_term_document_matrix(self):
+        return self._term_document_matrix
+
+    #TODO: This is unnecessarily slow for this task. Support loading
+    #and storing full matrices
+    def set_term_document_matrix(self):
+        
+        document_vector_files = os.listdir(self.document_vector_path)
+        
+        term_document_matrix =\
+            dok_matrix((self.n_terms, self.n_documents), dtype=int)
+
+        print 'Retrieving vectors from', self.document_vector_path
+
+        sys.stdout.write('Retrieved vector ')
+        progress = ''
+
+        for j,vector_file in enumerate(document_vector_files):
+                
+            # Progress meter
+            for char in progress:
+                sys.stdout.write('\b')
+            progress = (str(j+1) + ' of ' + str(self.n_documents))
+            sys.stdout.write(progress)
+            sys.stdout.flush()
+
+            document_vector = self.load_document_vector(j)
+
+            for (i,k) in document_vector.keys():
+                term_document_matrix[i, j] = document_vector[i,k]
+
+        print 
+
+        self._term_document_matrix = term_document_matrix
+
+    term_document_matrix =\
+        property(get_term_document_matrix, set_term_document_matrix)
+
+
+    # Methods for getting a specific term vector or document vector in
+    # memory and dealing with it as a typical numpy array
+
+    def term_vector(self, index):
+        return self.term_document_matrix.getrow(index).toarray()
+
+    def document_vector(self, index):
+        return self.term_document_matrix.getcol(index).toarray()
+
+
+    def load_document_vector(self, index):
+   
+        vector_name = '-'.join([self.corpus, self.corpus_param,
+                                self.model, self.model_param, 
+                                'document-vector-' + str(index) + '.pickle'])
+
+        vector_file = os.path.join(self.document_vector_path, vector_name)
+
+        # print 'Retrieving vector', index
+        with open(vector_file, 'r') as f:
+            return pickle.load(f)
+
+
+    # Methods for reading and writing vectors from/to the filesystem
+    def write_document_vector(self, vector, index):
+
+        vector_name = '-'.join([self.corpus, self.corpus_param,
+                                self.model, self.model_param, 
+                                'document-vector-' + str(index) + '.pickle'])
+        
+        vector_file = os.path.join(self.document_vector_path, vector_name)
+
+        # print 'Writing vector', index
+        with open(vector_file, 'w') as f:
+            pickle.dump(vector, f)
+            
+        return
+
+
+    def write_document_vectors(self, td_matrix, as_matrix=False):
+        
+        print 'Writing vectors to', self.document_vector_path
+
+        if as_matrix:
+            matrix_name = '-'.join([self.corpus, self.corpus_param,
+                                    self.model, self.model_param, 
+                                    'term-document-matrix.pickle'])
+            matrix_file = os.path.join(self.document_vector_path, vector_name)
+
+        # print 'Writing vector', index
+        # with open(vector_file, 'w') as f:
+        #     pickle.dump(vector, f)
+
+        else:
+            for i in xrange(td_matrix.shape[1]):
+                self.write_vector(td_matrix.getcol(i), i)
+            
+        return
+
+
+    # For computing similarities. TODO: It seems that this code can be
+    # abstracted from here.
+    def compute_cosines(self, vector, vector_type='term'):
+        
+        cosine_fn.vector1 = vector
+
+        #TODO: explicit dimensionality check
+        if vector_type == 'term':
+
+            vector_indices = xrange(self.n_terms)
+            cosine_fn.vector = self.term_vector
+            print 'Computing cosines against term vectors'
+
+        elif vector_type == 'document':
+
+            vector_indices = xrange(self.n_documents)
+            cosine_fn.vector = self.document_vector
+            print 'Computing cosines against document vectors'
+        
+        else:
+            raise Exception('Unknown vector type specified')
+
+
+        p = Pool()
+        #TODO: hack!!!
+        similarity_vector = p.map(cosine_fn, xrange(self.n_terms), 5000)
+        p.close()
+        
+        return np.array(similarity_vector, dtype=np.float32)
+
+
+
+    def similar(self, query, n=-1, operator='avg_cosines',
+                filter_stopwords = True, filter_degenerate = True):
+
+        # TODO: User friendly error handling
+        query_vectors = self.process_query(query)
+
+        if operator == 'avg_cosines':
+            
+            sim_vectors = [self.compute_cosines(v) 
+                           for v in query_vectors]
+            similarity_vector = reduce(lambda w, v: w + v, sim_vectors)
+            similarity_vector = similarity_vector / len(sim_vectors)
+
+        elif operator == 'convolve':
+            pass
+
+        elif operator == 'sum_vectors':
+            normed_vectors = [normalize(v) for v in query_vectors]
+            vector_sum = reduce(lambda w, v: w + v, normed_vectors)
+            similarity_vector = self.compute_cosines(vector_sum)
+
+        else:
+            raise Exception('Unrecognized operator name')
+
+        
+        pairs = zip(self.lexicon, similarity_vector)
+        print 'Sorting results'
+        pairs.sort(key=lambda p: p[1], reverse = True)
+        
+        if filter_degenerate:
+            print 'Filtering degenerate vectors'
+            pairs = filter(lambda p: p[1] != -2, pairs)
+
+        if n != -1:
+            pairs = pairs[:(n + len(self.stopwords))]
+
+        if filter_stopwords:
+            print 'Filtering stop words'
+            pairs = filter(lambda p: p[0] not in self.stopwords, pairs)
+
+        if n != -1:
+            pairs = pairs[:n]
+
+        return pairs
+
+
+    def print_similar(self, word, n=20, operator='avg_cosines'):
+    
+        pairs = self.similar(word, n=n, operator=operator)
+
+        # TODO: Make pretty printer robust
+        print ''.join(['-' for i in xrange(38)])
+        print '{0:^25}{1:^12}'.format('Word','Similarity')
+        for w,v in pairs:
+            print '{0:<25}{1:^12.3f}'.format(w,float(v))
+        print ''.join(['-' for i in xrange(38)])
+            
+        return
+
+
+    def process_query(self, query):
+    
+        bag_words = Tokenizer(self.corpus,
+                              self.corpus_param).tok_sent(query)
+        
+        print 'Filtering stop words'
+        bag_words = filter(lambda w: w not in self.stopwords,
+                           bag_words)
+
+        bag_indices = [self.lexicon.index(word) for word in bag_words]
+        
+        bag_vectors = [self.term_vector(i) for i in bag_indices]
+
+        print 'Filtering zero vectors'
+        for i in xrange(len(bag_words)):
+            if not np.any(bag_vectors[i]):
+                del bag_vectors[i]
+                del bag_words[i]
+        
+        print 'Final word sequence: {0}'.format(', '.join(bag_words))
+
+        return bag_vectors
+
+
+    def train(self):
+
+        docs = os.listdir(self.tokenized_path)
+
+        train_fn.n_terms = self.n_terms
+        train_fn.tokenized_paragraphs = self.tokenized_paragraphs
+        train_fn.rev_lexicon = \
+            dict(zip(self.lexicon, xrange(self.n_terms)))
+        
+        rev_document_alist =\
+            [(val,key) for (key,val) in self.document_dict.items()]
+        train_fn.rev_document_dict = dict(rev_document_alist)
+        
+        train_fn.write_document_vector = self.write_document_vector
+        
+        p = Pool()
+        p.map(train_fn, docs, 2)
+        p.close()
+
+        # map(train_fn, docs)
+
+        print 'Finished training.'
+
+        return
+
+
+
+
+def train_fn(name):
+    
+    n_terms = train_fn.n_terms
+    tokenized_paragraphs = train_fn.tokenized_paragraphs
+    rev_lexicon = train_fn.rev_lexicon
+    rev_document_dict = train_fn.rev_document_dict
+    write_document_vector = train_fn.write_document_vector
+    
+    paragraphs = tokenized_paragraphs(name)
+
+    for i,para in enumerate(paragraphs):
+        
+        sparse_vector = dok_matrix((n_terms,1), dtype=int)
+        
+        for word in para:
+            # try:
+                sparse_vector[rev_lexicon[word],0] += 1
+            # except:
+            #     print 'index =', rev_lexicon[word]
+            #     print 'sparse vector length =', sparse_vector.shape[1]
+            #     raise IndexError
+
+        write_document_vector(sparse_vector, rev_document_dict[(name, i)])
+
+    return
+
+
+
+
+
+
+
+
+
+def cosine_fn(vector_index):
+
+    return vector_cos(cosine_fn.vector1,
+                      cosine_fn.vector(vector_index))
