@@ -3,16 +3,20 @@ import pickle
 
 import numpy as np
 
-class IntegerCorpus(object):
+class Corpus(object):
     """
-    """
-    def __init__(self, int_list, dtype=np.uint32, 
-                 partitions=None, filename=None):
-        
-        self.int_array = np.asarray(int_list, dtype=dtype)
+    term_types is the *set* of term tokens recast as a list (so an
+    indexed set).
 
-        if self.int_array.ndim > 1:
-            raise ValueError('integer corpus must be 0 or 1-dim')
+    'partitions' should be a dictionary whose values are lists of
+    indices. They are verified presently at initialization.
+
+    """
+    def __init__(self, term_tokens, partitions=None, dtype=None,
+                 stoplist=None, filename=None):
+
+        self.term_tokens = np.asarray(term_tokens, dtype=dtype)
+        self.stoplist = stoplist
 
         #TODO: This verification needs to take place whenever
         #self.partitions is updated
@@ -27,19 +31,34 @@ class IntegerCorpus(object):
                     # checking to see that it is sorted and that the
                     # indices are in range
                     if ((i < len(v)-1 and j > v[i+1]) 
-                        or j >= len(self.array_list)):
+                        or j >= len(self.term_tokens)):
                         
                         #TODO: Define a proper exception
                         raise Exception('invalid partitioning', k, v)
 
         self.partitions = partitions
-        self.filename = filename
+
+        self._set_term_types()
 
 
-    def view_partition(self, name):
+    def __getitem__(self, i):
+        return self.term_tokens[i]
 
-        return [np.asarray(sub) for sub 
-                in np.split(self.int_array, self.partitions[name])]
+
+    #TODO: update term_types whenever self.term_tokens is updated. Or
+    #make self.term_tokens immutable.
+    def _set_term_types(self):
+        
+        self.term_types = list(set(self.term_tokens))
+
+
+    def view_partition(self, name, decoder=None):
+        parted = np.split(self.term_tokens, self.partitions[name])
+
+        if decoder:
+            return [ decoder.convert(part) for part in parted ]
+        else:
+            return parted
 
     
     def dump(self):
@@ -55,6 +74,44 @@ class IntegerCorpus(object):
             f.write(pickle.dumps(self))
         finally:
             f.close()
+
+
+    def digitize(self):
+        """
+        corpus is a Corpus instance from inphosemantics.corpus
+        """
+        # Underlying integer sequence
+        print 'Getting word types'
+        words = self.term_types
+        word_dict = dict(zip(words, xrange(len(words))))
+        
+        print 'Extracting sequence of word tokens'
+        int_corp = [word_dict[token] for token in self.term_tokens]
+
+        digitizedCorpus = Corpus(int_corp, partitions=self.partitions, dtype=np.uint32)
+        decoder = CorpusDecoder( self.term_types )
+    
+        return digitizedCorpus,decoder
+
+
+
+
+
+
+
+
+
+class CorpusDecoder(object):
+
+    def __init__(self, term_types): # possibly also attach partitions
+        self.term_types  = term_types
+
+    def decode(self, token):
+        return self.term_types[token]
+    
+    def convert(self, term_tokens):
+        return [ self.term_types[token] for token in term_tokens ]
+
 
 
 
@@ -77,57 +134,10 @@ def load_intcorp(filename):
 import os
 
 
-class Corpus(object):
-    """
-    term_types is the *set* of term tokens recast as a list (so an
-    indexed set).
-
-    'partitions' should be a dictionary whose values are lists of
-    indices. They are verified presently at initialization.
-
-    """
-    def __init__(self, term_tokens, partitions=None, 
-                 stoplist=None, filename=None):
-
-        self.term_tokens = term_tokens
-        self.stoplist = stoplist
-
-        #TODO: This verification needs to take place whenever
-        #self.partitions is updated
-
-        # Verify valid partitions
-        if partitions:
-            for k,v in partitions.iteritems():
-                
-                #Allows empty partitions
-                for i,j in enumerate(v):
-                    
-                    # checking to see that it is sorted and that the
-                    # indices are in range
-                    if ((i < len(v)-1 and j > v[i+1]) 
-                        or j >= len(obj)):
-                        
-                        #TODO: Define a proper exception
-                        raise Exception('invalid partitioning', k, v)
-
-        self.partitions = partitions
-
-        self._set_term_types()
-
-
-    def __getitem__(self, i):
-        return self.term_tokens[i]
-
-    #TODO: update term_types whenever self.term_tokens is updated. Or
-    #make self.term_tokens immutable.
-    def _set_term_types(self):
-        
-        self.term_types = list(set(self.term_tokens))
-
     
 
 #A stop-gap measure to generate new style Corpus instances from old
-def load_corpus(corpus, param):
+def import_corpus(corpus, param):
     
     from inphosemantics.corpus import Corpus as CorpusOld
 
@@ -148,12 +158,12 @@ def digitize_corpus(corpus):
     """
     # Underlying integer sequence
     print 'Getting word types'
-    words = corpus.word_types
+    words = corpus.term_types
     word_dict = dict(zip(words, xrange(len(words))))
     
     print 'Extracting sequence of word tokens'
-    tokens = flatten(corpus.pages)
-    int_corp = [word_dict[token] for token in tokens]
+    # tokens = flatten(corpus.pages)
+    int_corp = [word_dict[token] for token in corpus.term_tokens]
 
     # Partitions
     l = ind_flatten(corpus.pages)
@@ -172,7 +182,7 @@ def digitize_corpus(corpus):
                       paragraphs = paragraphs_partition,
                       sentences = sentences_partition)
 
-    return IntegerCorpus(int_corp, partitions=partitions)
+    return Corpus(int_corp, partitions=partitions, dtype=np.uint32)
 
 
 
@@ -392,3 +402,13 @@ def ind_flatten(ls):
 #             f.write(pickle.dumps(self))
 #         finally:
 #             f.close()
+
+
+
+
+############################
+####      TEST DATA    #####
+############################
+
+def genCorpus():
+    return Corpus(['cats','chase','dogs','dogs','do','not','chase','cats'], {'sentences' : [3]})
