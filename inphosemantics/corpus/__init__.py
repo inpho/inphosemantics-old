@@ -21,6 +21,20 @@ class CorpusBase(object):
         self.plain_path = os.path.join(self.corpus_path, 'plain')
 
 
+    #TODO: Collapse these three into one function (if indeed all three
+    #are needed after refactoring),
+    def tokenized_document(self, name):
+
+        if os.path.splitext(name)[1] != '.pickle':
+            name += '.pickle'
+
+        tokenized_file = os.path.join(self.tokenized_path, name)
+
+        print 'Reading tokenized document from', tokenized_file
+        with open(tokenized_file, 'r') as f:
+            return pickle.load(f)
+
+
     def tokenized_sentences(self, name):
 
         if os.path.splitext(name)[1] != '.pickle':

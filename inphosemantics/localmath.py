@@ -19,6 +19,7 @@ def vector_cos(v,w):
     Computes the cosine of the angle between vectors v and w. A result
     of -2 denotes undefined, i.e., when v or w is a zero vector
     '''
+    # TODO: let this just be NAN
     if not v.any() or not w.any():
         return -2
     else:

@@ -4,11 +4,129 @@ import pickle
 from multiprocessing import Pool
 import numpy as np
 from numpy.dual import fft, ifft
- 
+
+from scipy.sparse import lil_matrix, issparse
+from numpy import ndarray
+
 from inphosemantics.model import ModelBase
 from inphosemantics.corpus import Corpus
 from inphosemantics.corpus.tokenizer import Tokenizer
 from inphosemantics.localmath import vector_cos, normalize
+
+
+
+
+
+class SparseModel(ModelBase):
+
+    def __init__(self, corpus, corpus_param, model, model_param):
+        
+        self.corpus = corpus
+        self.corpus_param = corpus_param
+        self.model = model
+        self.model_param = model_param
+        
+        self.matrix_filename = ''
+
+        self.matrix_path = os.path.join(corpus, corpus_param, model, model_param, matrix_filename)
+
+
+class DenseModel(ModelBase):
+
+    pass
+
+
+
+
+
+class Matrix(object):
+
+    def __init__(self, num_rows, num_cols, filename):
+
+        self.filename = filename
+        self.num_rows = num_rows
+        self.num_cols = num_cols
+        self.set_matrix()        
+
+
+    def get_matrix(self):
+        
+        if self._matrix ==  None:
+            self.load()
+            
+        return self._matrix
+
+    def set_matrix(self, mat=None):
+        
+        self._matrix = mat
+
+    matrix = property(get_matrix, set_matrix)
+
+
+
+    def load(self):
+
+        with open(self.filename, 'r') as f:
+            self.matrix = pickle.load(f)
+
+
+    def dump(self):
+
+        with open(self.filename, 'w') as f:
+
+            if issparse(self.matrix):
+                pickle.dump(self.matrix, f)
+            else:
+                self.matrix.dump(f)
+
+                
+    def initialize(self, sparse=False, dtype=float):
+        
+        if sparse:
+            self.matrix =\
+                lil_matrix((self.num_rows, self.num_cols), dtype=dtype)
+        else:
+            self.matrix =\
+                np.zeros((self.num_rows, self.num_cols), dtype=dtype)
+                
+
+    def get_row(self, i):
+
+        if issparse(self.matrix):
+            return self.matrix.getrow(i).toarray()
+        else:
+            return self.matrix[i]
+
+
+    def update_row(self, i, v):
+        
+        if issparse(self.matrix):
+            for j in v.nonzero():
+                self.matrix[i,j] = v[j]
+        else:
+            self.matrix[i] = v
+
+
+
+    def get_col(self, j):
+
+        if issparse(self.matrix):
+            return self.matrix.getcol(j).toarray()
+        else:
+            return self.matrix[:,j]
+
+
+    def update_col(self, j, v):
+
+        if issparse(self.matrix):
+            for i in v.nonzero():
+                self.matrix[i,j] = v[i]
+        else:
+            self.matrix[i] = v
+
+
+
+
 
 
 class VectorSpaceModel(ModelBase):
@@ -26,6 +144,9 @@ class VectorSpaceModel(ModelBase):
 
         #TODO: set up getter and setter correctly 
         self.stored_vectors = None
+
+
+
 
 
     def write_vector(self, vector, index):
