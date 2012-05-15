@@ -3,6 +3,7 @@ import pickle
 
 import numpy as np
 
+
 class Corpus(object):
     """
     term_types is the *set* of term tokens recast as a list (so an
@@ -17,9 +18,6 @@ class Corpus(object):
 
         self.term_tokens = np.asarray(term_tokens, dtype=dtype)
         self.stoplist = stoplist
-
-        #TODO: This verification needs to take place whenever
-        #self.partitions is updated
 
         # Verify valid partitions
         if partitions:
@@ -44,9 +42,6 @@ class Corpus(object):
     def __getitem__(self, i):
         return self.term_tokens[i]
 
-
-    #TODO: update term_types whenever self.term_tokens is updated. Or
-    #make self.term_tokens immutable.
     def _set_term_types(self):
         
         self.term_types = list(set(self.term_tokens))
@@ -77,10 +72,7 @@ class Corpus(object):
 
 
     def digitize(self):
-        """
-        corpus is a Corpus instance from inphosemantics.corpus
-        """
-        # Underlying integer sequence
+
         print 'Getting word types'
         words = self.term_types
         word_dict = dict(zip(words, xrange(len(words))))
@@ -114,9 +106,11 @@ class CorpusDecoder(object):
 
 
 
-
-def load_intcorp(filename):
-    
+def load_picklez(filename):
+    """
+    Takes a filename and loads it as though it were a python pickle.
+    If the file ends in '.bz2', tries to decompress it first.
+    """
     if filename.endswith('.bz2'):
 
         f = bz2.BZ2File(filename, 'r')
@@ -131,10 +125,10 @@ def load_intcorp(filename):
 
 
 
-import os
 
 
-    
+
+import os    
 
 #A stop-gap measure to generate new style Corpus instances from old
 def import_corpus(corpus, param):
@@ -152,126 +146,33 @@ def import_corpus(corpus, param):
 
 
 
-def digitize_corpus(corpus):
-    """
-    corpus is a Corpus instance from inphosemantics.corpus
-    """
-    # Underlying integer sequence
-    print 'Getting word types'
-    words = corpus.term_types
-    word_dict = dict(zip(words, xrange(len(words))))
-    
-    print 'Extracting sequence of word tokens'
-    # tokens = flatten(corpus.pages)
-    int_corp = [word_dict[token] for token in corpus.term_tokens]
+class SepPartitions(object):
 
-    # Partitions
-    l = ind_flatten(corpus.pages)
-    #TODO: Write a function to generalize all of this zipping
+    # self.term_tokens ?
 
-    print 'Determining page partitions'
-    pages_partition = delta(zip(*l)[0])
+    def articles(self, path):
 
-    print 'Determining paragraph partitions'
-    paragraphs_partition = delta(zip(zip(*l)[0], zip(*l)[1]))
-    
-    print 'Determining sentence partitions'
-    sentences_partition = delta(zip(zip(*l)[0], zip(*l)[1], zip(*l)[2]))
+        article_names = os.listdir(path)
 
-    partitions = dict(pages = pages_partition,
-                      paragraphs = paragraphs_partition,
-                      sentences = sentences_partition)
-
-    return Corpus(int_corp, partitions=partitions, dtype=np.uint32)
-
-
-
-def delta(ls):
-    """
-    Takes a list-like object representing a sequence of integers or
-    tuples of integers and returns the indices where the integer or
-    tuple at i != that at i+1
-    """
-    result = []
-
-    for i in xrange(len(ls)-2):
-        if ls[i] != ls[i+1]:
-            result.append(i+1)
-
-    return result
+        partition = []
         
+        for name in article_names:
+            # the length of the articles give the partitions
 
-    
-def flatten(ls):
-    """
-    Flattens a list of lists. NB: not at all general; reaches maximum
-    recursion depth quickly.
-    """
-    def f(ls):
-        result = []
-
-        for x in ls:
-            if type(x) == list:
-                result.extend(x)
-            else:
-                result.append(x)
-                
-        return result
-    
-    if type(ls) == list:
-        return f(map(flatten, ls))
-    else:
-        return ls
-
-
-
-def ind_flatten(ls):
-    """
-    Flattens a list of lists. NB: not at all general; reaches maximum
-    recursion depth quickly.
-    """
-    def f(ls):
-        result = []
-
-        for i,x in enumerate(ls):
-            if type(x) == list:
-                result.extend([flatten([i,y]) for y in x])
-            else:
-                result.append(x)
-                
-        return result
-    
-    if type(ls) == list:
-        return f(map(ind_flatten, ls))
-    else:
-        return ls
-
-
-
-
-
-# class Corpus(object):
-#     """
-#     pages is a list of pages. Each page is a list of paragraphs. Each
-#     paragraph is a list of sentences. Each sentence is a list of
-#     word tokens. Each word token is a string.
-
-#     word_types is the *set* of word tokens recast as a list to give an
-#     indexing.
-
-#     """
-#     def __init__(self, pages, stopwords=None):
-
-#         self.pages = pages
-#         self.stopwords = stopwords
-#         self._set_word_types()
-
-
-#     #TODO: update word_types whenever pages is updated. Or make pages
-#     #immutable.
-#     def _set_word_types(self):
+            pass
         
-#         self.word_types = list(set(flatten(self.pages)))
+        return
+
+
+    def paragraphs(self, path):
+
+        pass
+
+
+    def sentences(self, path):
+
+        pass
+
 
 
 # def test_corpus():
@@ -325,83 +226,6 @@ def ind_flatten(ls):
 #     return c,d
 
 
-# def digitize_sep():
-
-#     c = load_corpus('sep','complete')
-#     return digitize_corpus(c)
-
-
-# class IntegerCorpus(np.ndarray):
-#     """
-#     For an explanation of the mechanics of this subclass, see how to
-#     subclass numpy ndarrays:
-#     http://docs.scipy.org/doc/numpy/user/basics.subclassing.html#basics-subclassing
-#     """
-
-#     #TODO: More thought needs to be put into what happens to the
-#     #partitions when IntegerCorpus objects are manipulated and combined.
-
-#     def __new__(cls, array, dtype=np.uint32, partitions=None, filename=None):
-
-#         obj = np.asarray(array, dtype=dtype).view(cls)
-
-#         if obj.ndim > 1:
-#             raise ValueError('integer corpus must be 0 or 1-dim')
-
-#         #TODO: This verification needs to take place whenever
-#         #self.partitions is updated
-
-#         # Verify valid partitions
-#         if partitions:
-#             for k,v in partitions.iteritems():
-                
-#                 #Allows empty partitions
-#                 for i,j in enumerate(v):
-                    
-#                     # checking to see that it is sorted and that the
-#                     # indices are in range
-#                     if ((i < len(v)-1 and j > v[i+1]) 
-#                         or j >= len(obj)):
-                        
-#                         #TODO: Define a proper exception
-#                         raise Exception('invalid partitioning', k, v)
-
-#         obj.partitions = partitions
-#         obj.filename = filename
-        
-#         return obj
-
-
-
-#     def __array_finalize__(self, obj):
-
-#         if obj is None:
-#             return
-
-#         self.partitions = getattr(obj, 'partitions', None)
-#         self.filename = getattr(obj, 'filename', None)
-
-
-
-#     def view_partition(self, name):
-
-#         return [np.asarray(sub) for sub 
-#                 in np.split(self, self.partitions[name])]
-
-    
-#     def dump(self):
-
-#         with open(self.filename, 'wb') as f:
-#             pickle.dump(self, f)
-
-
-#     def dumpz(self):
-
-#         f = bz2.BZ2File(self.filename + '.bz2', 'w')
-#         try:
-#             f.write(pickle.dumps(self))
-#         finally:
-#             f.close()
 
 
 
