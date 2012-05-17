@@ -9,32 +9,18 @@ class Corpus(object):
     term_types is the *set* of term tokens recast as a list (so an
     indexed set).
 
-    'partitions' should be a dictionary whose values are lists of
+    'token_dict' should be a dictionary whose values are lists of
     indices. They are verified presently at initialization.
 
     """
-    def __init__(self, term_tokens, partitions=None, dtype=None,
+    def __init__(self, term_tokens, token_dict=None, dtype=None,
                  stoplist=None, filename=None):
 
         self.term_tokens = np.asarray(term_tokens, dtype=dtype)
         self.stoplist = stoplist
 
-        # Verify valid partitions
-        if partitions:
-            for k,v in partitions.iteritems():
-                
-                #Allows empty partitions
-                for i,j in enumerate(v):
-                    
-                    # checking to see that it is sorted and that the
-                    # indices are in range
-                    if ((i < len(v)-1 and j > v[i+1]) 
-                        or j >= len(self.term_tokens)):
-                        
-                        #TODO: Define a proper exception
-                        raise Exception('invalid partitioning', k, v)
-
-        self.partitions = partitions
+        self.token_dict = token_dict
+        self.validate_token_dict()
 
         self._set_term_types()
 
@@ -47,13 +33,17 @@ class Corpus(object):
         self.term_types = list(set(self.term_tokens))
 
 
-    def view_partition(self, name, decoder=None):
-        parted = np.split(self.term_tokens, self.partitions[name])
+    def view_tokens(self, name, decoder=None):
+
+        #TODO: A user might reasonably try to view 'words' or 'terms'.
+        #Handle this.
+        
+        tokens = np.split(self.term_tokens, self.token_dict[name])
 
         if decoder:
-            return [ decoder.convert(part) for part in parted ]
+            return [ decoder.convert(token) for token in tokens ]
         else:
-            return parted
+            return tokens
 
     
     def dump(self):
@@ -70,7 +60,7 @@ class Corpus(object):
         finally:
             f.close()
 
-
+    
     def digitize(self):
 
         print 'Getting word types'
@@ -80,11 +70,30 @@ class Corpus(object):
         print 'Extracting sequence of word tokens'
         int_corp = [word_dict[token] for token in self.term_tokens]
 
-        digitizedCorpus = Corpus(int_corp, partitions=self.partitions, dtype=np.uint32)
+        digitizedCorpus = Corpus(int_corp, token_dict=self.token_dict, dtype=np.uint32)
         decoder = CorpusDecoder( self.term_types )
     
         return digitizedCorpus,decoder
 
+
+    def validate_token_dict(self):
+        """
+        Checks for invalid tokenizations. Specifically, checks to see
+        that the list of indices are sorted and are
+        in range. Allows empty tokens.
+        """
+        if self.token_dict:
+            for k,v in self.token_dict.iteritems():
+                
+                for i,j in enumerate(v):
+                    
+                    if ((i < len(v)-1 and j > v[i+1]) 
+                        or j >= len(self.term_tokens)):
+                        
+                        #TODO: Define a proper exception
+                        raise Exception('invalid tokenization', k, v)
+
+        return True
 
 
 
@@ -95,7 +104,7 @@ class Corpus(object):
 
 class CorpusDecoder(object):
 
-    def __init__(self, term_types): # possibly also attach partitions
+    def __init__(self, term_types): # possibly also attach tokens
         self.term_types  = term_types
 
     def decode(self, token):
@@ -125,105 +134,79 @@ def load_picklez(filename):
 
 
 
+from inphosemantics.corpus.tokenizer import *
 
 
+class SepTokens(object):
 
-import os    
+    def __init__(self, path):
 
-#A stop-gap measure to generate new style Corpus instances from old
-def import_corpus(corpus, param):
-    
-    from inphosemantics.corpus import Corpus as CorpusOld
-
-    corpus = CorpusOld(corpus, param)
-
-    page_names = os.listdir(corpus.tokenized_path)
-    
-    pages = [corpus.tokenized_document(name) 
-             for name in page_names]
-
-    return Corpus(pages, stopwords=corpus.stopwords)
+        self.path = path
+        self.words = []
+        self.article_meta = {}
+        self.articles, self.paragraphs, self.sentences =\
+            self._compute_tokens()
 
 
+    def _compute_tokens(self):
 
-class SepPartitions(object):
+        articles, metadata = textfile_tokenize(self.path)
 
-    # self.term_tokens ?
+        self.article_meta = metadata
 
-    def articles(self, path):
+        article_tokens = []
+        paragraph_tokens = []
+        sentence_spans = []
 
-        article_names = os.listdir(path)
+        for i,article in enumerate(articles):
 
-        partition = []
-        
-        for name in article_names:
-            # the length of the articles give the partitions
+            print 'Processing article in', self.article_meta[i]
 
-            pass
-        
-        return
+            paragraphs = paragraph_tokenize(article)
+            
+            for paragraph in paragraphs:
+                sentences = sentence_tokenize(paragraph)
 
+                for sentence in sentences:
+                    words = word_tokenize(sentence)
 
-    def paragraphs(self, path):
+                    self.words.extend(words)
+                    
+                    sentence_spans.append(len(words))
 
-        pass
-
-
-    def sentences(self, path):
-
-        pass
-
-
-
-# def test_corpus():
-    
-#     c = Corpus(
-#         [[[[u'zombies', u'are', u'exactly', u'like', u'us', u'in', u'all',
-#             u'physical', u'respects', u'but', u'have', u'no', u'conscious',
-#             u'experiences', u'by', u'definition', u'there', u'is', u'nothing',
-#             u'it', u'is', u'like', u'to', u'be', u'a', u'zombie'],
-#            [u'yet', u'zombies', u'behave', u'like', u'us', u'and', u'some',
-#             u'even', u'spend', u'a', u'lot', u'of', u'time', u'discussing',
-#             u'consciousness'],
-#            [u'this', u'disconcerting', u'fantasy', u'helps', u'to', u'make',
-#             u'the', u'problem', u'of', u'phenomenal', u'consciousness',
-#             u'vivid', u'especially', u'as', u'a', u'problem', u'for',
-#             u'physicalism']],
-#           [[u'few', u'people', u'think', u'zombies', u'actually', u'exist'],
-#            [u'but', u'many', u'hold', u'they', u'are', u'at', u'least',
-#             u'conceivable', u'and', u'some', u'that', u'they', u'are',
-#             u'logically', u'or', u'metaphysically', u'possible'], 
-#            [u'it', u'is', u'argued', u'that', u'if', u'zombies', u'are',
-#             u'so', u'much', u'as', u'a', u'bare', u'possibility', u'then',
-#             u'physicalism', u'is', u'false', u'and', u'some', u'kind',
-#             u'of', u'dualism', u'must', u'be', u'accepted'],
-#            [u'for', u'many', u'philosophers', u'that', u'is', u'the',
-#             u'chief', u'importance', u'of', u'the', u'zombie', u'idea'],
-#            [u'but', u'the', u'idea', u'is', u'also', u'of', u'interest',
-#             u'for', u'its', u'presuppositions', u'about', u'the', u'nature',
-#             u'of', u'consciousness', u'and', u'how', u'the', u'physical',
-#             u'and', u'the', u'phenomenal', u'are', u'related'],
-#            [u'use', u'of', u'the', u'zombie', u'idea', u'against',
-#             u'physicalism', u'also', u'raises', u'more', u'general',
-#             u'questions', u'about', u'relations', u'between',
-#             u'imaginability', u'conceivability', u'and', u'possibility'], 
-#            [u'finally', u'zombies', u'raise', u'epistemological',
-#             u'difficulties', u'they', u'reinstate', u'the', u'other',
-#             u'minds', u'problem']]]])
-
-#     d = digitize_corpus(c)
-
-#     print 'Sentence view is lossless:',\
-#         (np.asarray(d) == np.hstack(d.view_partition('sentences'))).all()
-
-#     print 'Paragraph view is lossless:',\
-#         (np.asarray(d) == np.hstack(d.view_partition('paragraphs'))).all()
-
-#     print 'Pages view is lossless:',\
-#         (np.asarray(d) == np.hstack(d.view_partition('pages'))).all()
+                paragraph_tokens.append(sum(sentence_spans))
+                    
+            article_tokens.append(sum(sentence_spans))
 
 
-#     return c,d
+        sentence_tokens =\
+            [sum(sentence_spans[:i+1])
+             for i in xrange(len(sentence_spans) - 1)]
+
+
+        article_tokens = article_tokens[:-1]
+        paragraph_tokens = paragraph_tokens[:-1]
+        sentence_tokens = sentence_tokens[:-1]
+
+
+        return article_tokens, paragraph_tokens,\
+               sentence_tokens
+
+
+    @property
+    def tokens_dict(self):
+
+        d = dict(articles = self.articles,
+                 paragraphs = self.paragraphs,
+                 sentences = self.sentences)
+
+        return d
+
+
+class IepTokens(SepTokens):
+    pass
+
+
 
 
 
@@ -236,3 +219,19 @@ class SepPartitions(object):
 
 def genCorpus():
     return Corpus(['cats','chase','dogs','dogs','do','not','chase','cats'], {'sentences' : [3]})
+
+
+def test_IepTokens():
+
+    path = 'test-data/iep-selected'
+
+    parts = IepTokens(path)
+
+    print 'Article breaks:\n', parts.articles
+    print '\nParagraph breaks:\n', parts.paragraphs
+    print '\nSentence breaks:\n', parts.sentences
+
+    c = Corpus(parts.words, parts.tokens_dict)
+
+    return c
+
