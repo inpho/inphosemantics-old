@@ -142,7 +142,7 @@ class SepTokens(object):
     def __init__(self, path):
 
         self.path = path
-        self.words = []
+        self.word_tokens = []
         self.article_meta = {}
         self.articles, self.paragraphs, self.sentences =\
             self._compute_tokens()
@@ -168,11 +168,11 @@ class SepTokens(object):
                 sentences = sentence_tokenize(paragraph)
 
                 for sentence in sentences:
-                    words = word_tokenize(sentence)
+                    word_tokens = word_tokenize(sentence)
 
-                    self.words.extend(words)
+                    self.word_tokens.extend(word_tokens)
                     
-                    sentence_spans.append(len(words))
+                    sentence_spans.append(len(word_tokens))
 
                 paragraph_tokens.append(sum(sentence_spans))
                     
@@ -225,13 +225,29 @@ def test_IepTokens():
 
     path = 'test-data/iep-selected'
 
-    parts = IepTokens(path)
+    tokens = IepTokens(path)
 
-    print 'Article breaks:\n', parts.articles
-    print '\nParagraph breaks:\n', parts.paragraphs
-    print '\nSentence breaks:\n', parts.sentences
+    print 'Article breaks:\n', tokens.articles
+    print '\nParagraph breaks:\n', tokens.paragraphs
+    print '\nSentence breaks:\n', tokens.sentences
 
-    c = Corpus(parts.words, parts.tokens_dict)
+    return tokens
+
+
+def test_Corpus():
+
+    path = 'test-data/iep-selected'
+
+    tokens = IepTokens(path)
+
+    c = Corpus(tokens.word_tokens, tokens.tokens_dict)
+
+    print 'First article:\n', c.view_tokens('articles')[1]
+    print '\nFirst five paragraphs:\n', c.view_tokens('paragraphs')[:5]
+    print '\nFirst ten sentences:\n', c.view_tokens('sentences')[:10]
+
+    print '\nLast article:\n', c.view_tokens('articles')[-1]
+    print '\nLast five paragraphs:\n', c.view_tokens('paragraphs')[-5:]
+    print '\nLast ten sentences:\n', c.view_tokens('sentences')[-10:]
 
     return c
-
