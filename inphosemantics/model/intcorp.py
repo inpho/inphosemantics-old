@@ -70,10 +70,10 @@ class Corpus(object):
         print 'Extracting sequence of word tokens'
         int_corp = [word_dict[token] for token in self.term_tokens]
 
-        digitizedCorpus = Corpus(int_corp, token_dict=self.token_dict, dtype=np.uint32)
+        digitized_corpus = Corpus(int_corp, token_dict=self.token_dict, dtype=np.uint32)
         decoder = CorpusDecoder( self.term_types )
     
-        return digitizedCorpus,decoder
+        return digitized_corpus, decoder
 
 
     def validate_token_dict(self):
@@ -157,6 +157,8 @@ class SepTokens(object):
         article_tokens = []
         paragraph_tokens = []
         sentence_spans = []
+
+        #TODO: Write this loop, etc in proper recursive form.
 
         for i,article in enumerate(articles):
 
@@ -251,3 +253,30 @@ def test_Corpus():
     print '\nLast ten sentences:\n', c.view_tokens('sentences')[-10:]
 
     return c
+
+
+def test_integer_corpus():
+
+    path = 'test-data/iep-selected'
+
+    tokens = IepTokens(path)
+
+    c = Corpus(tokens.word_tokens, tokens.tokens_dict)
+
+    int_corpus, decoder = c.digitize()
+
+    print 'First article:\n',\
+          int_corpus.view_tokens('articles', decoder)[1]
+    print '\nFirst five paragraphs:\n',\
+          int_corpus.view_tokens('paragraphs', decoder)[:5]
+    print '\nFirst ten sentences:\n',\
+          int_corpus.view_tokens('sentences', decoder)[:10]
+
+    print '\nLast article:\n',\
+          int_corpus.view_tokens('articles', decoder)[-1]
+    print '\nLast five paragraphs:\n',\
+          int_corpus.view_tokens('paragraphs', decoder)[-5:]
+    print '\nLast ten sentences:\n',\
+          int_corpus.view_tokens('sentences', decoder)[-10:]
+
+    return int_corpus, decoder
