@@ -34,14 +34,27 @@ class Corpus(object):
 
 
     def view_tokens(self, name, decoder=None):
+        """
+        Takes a key name and returns a list of lists of strings.
+        Intended usage: the key name is the name of a tokenization in
+        term_dict and the output is the actual list of tokens.
 
+        'decoder' is an indexable mapping the term_tokens to
+        something. Typical usage: where the term_tokens are integers,
+        the decoder might be the term_types so that the output is a
+        list of lists of strings.
+        """
+        
         #TODO: A user might reasonably try to view 'words' or 'terms'.
         #Handle this.
         
         tokens = np.split(self.term_tokens, self.token_dict[name])
 
+        #Rewrite this so as to return a numpy array (i.e., an object
+        #with a datatype)
+
         if decoder:
-            return [ decoder.convert(token) for token in tokens ]
+            return map(lambda l: [decoder[x] for x in l], tokens)
         else:
             return tokens
 
@@ -71,9 +84,8 @@ class Corpus(object):
         int_corp = [word_dict[token] for token in self.term_tokens]
 
         digitized_corpus = Corpus(int_corp, token_dict=self.token_dict, dtype=np.uint32)
-        decoder = CorpusDecoder( self.term_types )
     
-        return digitized_corpus, decoder
+        return digitized_corpus, self.term_types
 
 
     def validate_token_dict(self):
@@ -94,24 +106,6 @@ class Corpus(object):
                         raise Exception('invalid tokenization', k, v)
 
         return True
-
-
-
-
-
-
-
-
-class CorpusDecoder(object):
-
-    def __init__(self, term_types): # possibly also attach tokens
-        self.term_types  = term_types
-
-    def decode(self, token):
-        return self.term_types[token]
-    
-    def convert(self, term_tokens):
-        return [ self.term_types[token] for token in term_tokens ]
 
 
 
