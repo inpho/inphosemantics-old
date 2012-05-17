@@ -1,74 +1,13 @@
 import os.path
 import re
 import pickle
+import codecs
+
 from nltk import TreebankWordTokenizer
 import nltk.data
 
-from inphosemantics.corpus import CorpusBase
 
 
-######################################################################
-#                    Load the plain text corpus
-#                     and dump tokenized corpus
-######################################################################
-
-class Tokenizer(CorpusBase):
-
-    def __init__(self, corpus, corpus_param):
-
-        CorpusBase.__init__(self, corpus, corpus_param)
-            
-        self.stok = nltk.data.load('tokenizers/punkt/english.pickle')
-        self.wtok = TreebankWordTokenizer()
-
-
-    def tok_corpus(self):
-        
-        fs = os.listdir(self.plain_path)
-        for f in fs:
-            name = os.path.splitext(f)[0]
-            self.tok_article(name)
-
-        return
-
-
-    def write_tokens(self, sents, name):
-
-        tok_file = os.path.join(self.tokenized_path, name + '.pickle')
-
-        print 'Writing tokenized paragraphs and sentences to', tok_file
-        with open(tok_file, 'w') as f:
-            pickle.dump(sents, f)
-
-
-    def tok_article(self, name):
-    
-        def st(para):
-            para = self.stok.tokenize(para, realign_boundaries=True)
-            para = map(lambda sent: self.tok_sent(sent), para)
-            para = [sent for sent in para if len(sent) > 1]
-            return para
-
-        text = self.plain_text(name)
-    
-        paras = text.split('\n\n')
-        paras = map(st, paras)
-        paras = [para for para in paras if para]
-        
-        self.write_tokens(paras, name)
-    
-        return        
-
-
-    def tok_sent(self, sent):
-    
-        sent = rehyph(sent)
-        sent = self.wtok.tokenize(sent)
-        sent = [word.lower() for word in sent]
-        sent = strip_punc(sent)
-        sent = rem_num(sent)
-        
-        return sent
 
 
 ######################################################################
@@ -149,7 +88,7 @@ def paragraph_tokenize(text):
 
 
 
-import codecs
+
 
 def textfile_tokenize(path):
     """
@@ -175,6 +114,94 @@ def textfile_tokenize(path):
     return out
 
 
+class SepTokens(object):
+
+    def __init__(self, path):
+
+        self.path = path
+        self.word_tokens = []
+        self.articles_meta = None
+        self.articles, self.paragraphs, self.sentences =\
+            self._compute_tokens()
+
+
+    def _compute_tokens(self):
+
+        articles, metadata = textfile_tokenize(self.path)
+
+        self.articles_meta = metadata
+
+        article_tokens = []
+        paragraph_tokens = []
+        sentence_spans = []
+
+        #TODO: Write this loop, etc in proper recursive form.
+
+        for i,article in enumerate(articles):
+
+            print 'Processing article in', self.articles_meta[i]
+
+            paragraphs = paragraph_tokenize(article)
+            
+            for paragraph in paragraphs:
+                sentences = sentence_tokenize(paragraph)
+
+                for sentence in sentences:
+                    word_tokens = word_tokenize(sentence)
+
+                    self.word_tokens.extend(word_tokens)
+                    
+                    sentence_spans.append(len(word_tokens))
+
+                paragraph_tokens.append(sum(sentence_spans))
+                    
+            article_tokens.append(sum(sentence_spans))
+
+
+        sentence_tokens =\
+            [sum(sentence_spans[:i+1])
+             for i in xrange(len(sentence_spans) - 1)]
+
+
+        article_tokens = article_tokens[:-1]
+        paragraph_tokens = paragraph_tokens[:-1]
+        sentence_tokens = sentence_tokens[:-1]
+
+
+        return article_tokens, paragraph_tokens,\
+               sentence_tokens
+
+
+    @property
+    def tokens_dict(self):
+
+        d = dict(articles = self.articles,
+                 paragraphs = self.paragraphs,
+                 sentences = self.sentences)
+
+        return d
+
+    @property
+    def tokens_metadata(self):
+
+        d = dict(articles = self.articles_meta,
+                 paragraphs = None,
+                 sentences = None)
+
+        return d
+
+
+class IepTokens(SepTokens):
+    pass
+
+
+
+
+######################################################################
+#                               Tests
+######################################################################
+
+
 def test_tokenizers():
 
     path = '/var/inphosemantics/data/iep/complete/corpus/plain'
@@ -197,3 +224,82 @@ def test_tokenizers():
     print 'Words:\n'
     for sent in paragraph_sentences:
         print ', '.join(word_tokenize(sent)), '\n'
+
+
+def test_IepTokens():
+
+    path = 'test-data/iep-selected'
+
+    tokens = IepTokens(path)
+
+    print 'Article breaks:\n', tokens.articles
+    print '\nParagraph breaks:\n', tokens.paragraphs
+    print '\nSentence breaks:\n', tokens.sentences
+
+    return tokens
+
+
+
+######################################################################
+#                            * Old *
+#                    Load the plain text corpus
+#                     and dump tokenized corpus
+######################################################################
+
+# class Tokenizer(CorpusBase):
+
+#     def __init__(self, corpus, corpus_param):
+
+#         CorpusBase.__init__(self, corpus, corpus_param)
+            
+#         self.stok = nltk.data.load('tokenizers/punkt/english.pickle')
+#         self.wtok = TreebankWordTokenizer()
+
+
+#     def tok_corpus(self):
+        
+#         fs = os.listdir(self.plain_path)
+#         for f in fs:
+#             name = os.path.splitext(f)[0]
+#             self.tok_article(name)
+
+#         return
+
+
+#     def write_tokens(self, sents, name):
+
+#         tok_file = os.path.join(self.tokenized_path, name + '.pickle')
+
+#         print 'Writing tokenized paragraphs and sentences to', tok_file
+#         with open(tok_file, 'w') as f:
+#             pickle.dump(sents, f)
+
+
+#     def tok_article(self, name):
+    
+#         def st(para):
+#             para = self.stok.tokenize(para, realign_boundaries=True)
+#             para = map(lambda sent: self.tok_sent(sent), para)
+#             para = [sent for sent in para if len(sent) > 1]
+#             return para
+
+#         text = self.plain_text(name)
+    
+#         paras = text.split('\n\n')
+#         paras = map(st, paras)
+#         paras = [para for para in paras if para]
+        
+#         self.write_tokens(paras, name)
+    
+#         return        
+
+
+#     def tok_sent(self, sent):
+    
+#         sent = rehyph(sent)
+#         sent = self.wtok.tokenize(sent)
+#         sent = [word.lower() for word in sent]
+#         sent = strip_punc(sent)
+#         sent = rem_num(sent)
+        
+#         return sent
