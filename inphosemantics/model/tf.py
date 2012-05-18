@@ -10,6 +10,10 @@ from inphosemantics.model.matrix\
 from inphosemantics import load_picklez
 
 
+# TODO: Replace CorpusModel with a system of classes that gives a
+# generic interface to viewer classes specific to each model class
+
+
 
 # Assumes a row vector
 def norm(v):
@@ -95,7 +99,7 @@ class TFModel(object):
         if filter_nan:
             results = [(t,v) for t,v in results if np.isfinite(v)]
 
-        dtype = [('term', np.dtype(type(term))), ('value', np.float)]
+        dtype = [('term', np.uint32), ('value', np.float)]
         # NB: numpy >= 1.4 sorts NaN to the end
         results = np.array(results, dtype=dtype)
         results.sort(order='value')
@@ -118,7 +122,7 @@ class TFModel(object):
         if filter_nan:
             results = [(t,v) for t,v in results if np.isfinite(v)]
 
-        dtype = [('term', np.dtype(type(term))), ('value', np.float)]
+        dtype = [('term', np.uint32), ('value', np.float)]
         # NB: numpy >= 1.4 sorts NaN to the end
         results = np.array(results, dtype=dtype)
         results.sort(order='value')
@@ -126,21 +130,41 @@ class TFModel(object):
 
         return results
 
+    
+    def cfs(self):
+        """
+        """
+        pass
 
-
+    
 class TFIDFModel(TFModel):
+
+    def idf(self, term):
+
+        # Count the number of non-zero entries in the row and
+        # scale
+        return np.log(self.td_matrix.shape[1]
+                      / self.td_matrix[term,:].nnz)
+
     
     def train(self, corpus):
         
         super(TFIDFModel, self).train(corpus)
 
         for i in xrange(self.td_matrix.shape[0]):
+            self.td_matrix[i,:] *= self.idf(i)
 
-            # Count the number of non-zero entries in the row and
-            # scale
-            idf = np.log(self.td_matrix.shape[1] / self.td_matrix[i,:].nnz)
 
-            self.td_matrix[i,:] *= idf
+    def idfs(self):
+
+        results = [(i, self.idf(i))
+                   for i in xrange(self.td_matrix.shape[0])]
+        dtype = [('t', np.int32), ('v', np.float)]
+        results = np.array(results, dtype=dtype)
+        results.sort(order='v')
+        results = results[::-1]
+        
+        return results
 
 
 

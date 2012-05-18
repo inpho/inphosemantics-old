@@ -40,7 +40,8 @@ def digitize_stoplist(c):
     decoder = dict(zip(c.term_types_str, xrange(len(c.term_types))))
     
     out = c.decode(stoplist, decoder)
-
+    # It's possible that the stop list and the corpus term types do
+    # not completely overlap
     out = [i for i in out if np.isfinite(i)]
 
     return out
@@ -98,11 +99,13 @@ def tfidf_viewer():
 
     print 'Loading corpus'
     c = load_picklez(os.path.join(corpus, complete))
+    s = digitize_stoplist(c)
 
     document_type = 'articles'
 
     print 'Loading term frequency model'
     m = TFIDFModel(os.path.join(models, tfidf_word_article), document_type)
     m.load_matrix()
+    m.apply_stoplist(s)
 
     return CorpusModel(c, m)
