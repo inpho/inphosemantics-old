@@ -1,5 +1,3 @@
-from __future__ import division
-
 import time
 from multiprocessing import Pool
 
@@ -40,8 +38,10 @@ def document_fn(i):
 class TFModel(object):
     """
     """
-    def __init__(self, matrix_filename=None, document_type=None):
+    def __init__(self, matrix=None, matrix_filename=None,
+                 document_type=None):
 
+        self.td_matrix = matrix
         self.matrix_filename = matrix_filename
         self.document_type = document_type
 
@@ -62,6 +62,7 @@ class TFModel(object):
         for j,document in enumerate(documents):
             for term in document:
                 self.td_matrix[term,j] += 1
+
 
 
     def load_matrix(self):
@@ -137,35 +138,62 @@ class TFModel(object):
         pass
 
     
-class TFIDFModel(TFModel):
+class ViewTFData(object):
 
-    def idf(self, term):
+    def __init__(self, corpus=None, corpus_filename=None, 
+                 model=None, matrix=None, matrix_filename=None,
+                 document_type='documents', stoplist=None):
 
-        # Count the number of non-zero entries in the row and
-        # scale
-        return np.log(self.td_matrix.shape[1]
-                      / self.td_matrix[term,:].nnz)
+        if corpus:
+            if corpus_filename:
+                raise Exception("Both a corpus and a "
+                                "corpus filename were given.")
+            self.corpus = corpus
+
+        elif corpus_filename:
+            self.corpus = load_picklez(corpus_filename)
+
+        else:
+            raise Exception("Neither a corpus nor a "
+                            "corpus filename were given.")
+            
+
+        if model:
+            if matrix:
+                raise Exception("Both a model and a "
+                                "matrix were given.")
+            elif matrix_filename:
+                raise Exception("Both a model and a "
+                                "matrix filename were given.")
+            else:
+                self.model = model
+                
+        elif matrix:
+            if matrix_filename:
+                raise Exception("Both a matrix and a "
+                                "matrix filename were given.")
+            else:
+                self.model = TFModel(matrix=matrix,
+                                     document_type=document_type)
+
+        elif matrix_filename:
+            self.model = TFModel(matrix_filename=matrix_filename,
+                                 document_type=document_type)
+            self.model.load_matrix()
+
+        else:
+            raise Exception("Neither a model, matrix nor "
+                            "matrix filename were given.")
+
+        if stoplist:
+            self.stoplist = self.encode_stoplist()
+
+
+    def encode_stoplist(self):
+
+        pass
 
     
-    def train(self, corpus):
-        
-        super(TFIDFModel, self).train(corpus)
-
-        for i in xrange(self.td_matrix.shape[0]):
-            self.td_matrix[i,:] *= self.idf(i)
-
-
-    def idfs(self):
-
-        results = [(i, self.idf(i))
-                   for i in xrange(self.td_matrix.shape[0])]
-        dtype = [('t', np.int32), ('v', np.float)]
-        results = np.array(results, dtype=dtype)
-        results.sort(order='v')
-        results = results[::-1]
-        
-        return results
-
 
 
 class CorpusModel(object):
@@ -222,27 +250,6 @@ def test_TFModel():
 
     return corpus, model
 
-
-def test_TFIDFModel():
-
-    corpus_filename =\
-        'test-data/iep/selected/corpus/iep-selected.pickle.bz2'
-    matrix_filename =\
-        'test-data/iep/selected/models/iep-selected-tfidf-word-article.mtx.bz2'
-
-    corpus = load_picklez(corpus_filename)
-
-    model = TFIDFModel(matrix_filename, 'articles')
-
-    model.train(corpus)
-
-    model.dumpz()
-
-    model = TFIDFModel(matrix_filename, 'articles')
-
-    model.load_matrix()
-
-    return corpus, model
 
 
 
