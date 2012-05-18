@@ -58,9 +58,22 @@ class BaseCorpus(object):
         #with a datatype)
 
         if decoder:
-            return map(lambda l: [decoder[x] for x in l], tokens)
+            return map(lambda l: self.decode(l, decoder), tokens)
         else:
             return tokens
+
+
+    def decode(self, token, decoder):
+
+        out = []
+        for x in token:
+            try:
+                out.append(decoder[x])
+            except KeyError:
+                out.append(np.NaN)
+
+        return out
+
 
     
     def dump(self):
@@ -276,6 +289,7 @@ def test_Corpus_dump():
                tokens.tokens_metadata, filename)
 
     c.dumpz()
+
 
 
 # import codecs

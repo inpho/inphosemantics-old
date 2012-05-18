@@ -1,5 +1,8 @@
 import os
 
+import numpy as np
+from nltk.corpus import stopwords as nltk_stopwords
+
 from inphosemantics import *
 from inphosemantics.corpus.tokenizer import IepTokens
 from inphosemantics.corpus import Corpus
@@ -16,6 +19,7 @@ tf_word_article = 'iep-complete-tf-word-article.mtx.bz2'
 tfidf_word_article = 'iep-complete-tfidf-word-article.mtx.bz2'
 
 
+
 def gen_corpus_file():
 
     print 'Tokenizing IEP'
@@ -28,6 +32,18 @@ def gen_corpus_file():
     print 'Saving IEP'
     c.dumpz()
 
+
+def digitize_stoplist(c):
+
+    stoplist = nltk_stopwords.words('english')
+
+    decoder = dict(zip(c.term_types_str, xrange(len(c.term_types))))
+    
+    out = c.decode(stoplist, decoder)
+
+    out = [i for i in out if np.isfinite(i)]
+
+    return out
 
 
 def train_tf_model():
@@ -43,8 +59,6 @@ def train_tf_model():
     
     print 'Saving matrix'
     m.dumpz()
-
-
 
 
 def train_tfidf_model():
@@ -67,12 +81,14 @@ def tf_viewer():
 
     print 'Loading corpus'
     c = load_picklez(os.path.join(corpus, complete))
+    s = digitize_stoplist(c)
 
     document_type = 'articles'
 
     print 'Loading term frequency model'
     m = TFModel(os.path.join(models, tf_word_article), document_type)
     m.load_matrix()
+    m.apply_stoplist(s)
 
     return CorpusModel(c, m)
 

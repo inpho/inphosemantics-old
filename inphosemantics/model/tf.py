@@ -3,7 +3,6 @@ from __future__ import division
 import time
 from multiprocessing import Pool
 
-
 import numpy as np
 
 from inphosemantics.model.matrix\
@@ -25,12 +24,13 @@ def vector_cos(v,w):
 
 
 
-# Sits out here for multiprocessing
+# Sit out here for multiprocessing
 def term_fn(i):
     return i, vector_cos(term_fn.v1, term_fn.td_matrix[i,:].todense())
 
 def document_fn(i):
-    return i, vector_cos(document_fn.v1, document_fn.td_matrix[:,i].todense().T)
+    return i, vector_cos(document_fn.v1,
+                         document_fn.td_matrix[:,i].todense().T)
 
 
 class TFModel(object):
@@ -70,9 +70,19 @@ class TFModel(object):
         self.td_matrix.dumpz(comment=time.asctime())
 
 
+    def apply_stoplist(self, stoplist):
+
+        #Filter stoplist. Zeroing the stop word row makes the
+        #resulting cosine undefined; undefined cosines are later
+        #filtered out.
+
+        for i in stoplist:
+            self.td_matrix[i,:] = np.zeros(self.td_matrix.shape[1])
+
+
 
     #TODO: These are almost the same function....
-    def similar_terms(self, term):
+    def similar_terms(self, term, filter_nan=False):
 
         term_fn.v1 = self.td_matrix[term,:].todense()
         term_fn.td_matrix = self.td_matrix
@@ -81,23 +91,38 @@ class TFModel(object):
         results = p.map(term_fn, range(self.td_matrix.shape[0]))
         p.close()
 
-        results.sort(key=lambda p: p[1], reverse = True)
+        # Filter out undefined results
+        if filter_nan:
+            results = [(t,v) for t,v in results if np.isfinite(v)]
+
+        dtype = [('term', np.dtype(type(term))), ('value', np.float)]
+        # NB: numpy >= 1.4 sorts NaN to the end
+        results = np.array(results, dtype=dtype)
+        results.sort(order='value')
+        results = results[::-1]
 
         return results
 
 
-    def similar_documents(self, document):
+
+    def similar_documents(self, document, stoplist=None, filter_nan=False):
 
         document_fn.v1 = self.td_matrix[:,document].todense().T
         document_fn.td_matrix = self.td_matrix
-
-        # results = map(document_fn, range(self.td_matrix.shape[1]))
 
         p = Pool()
         results = p.map(document_fn, range(self.td_matrix.shape[1]))
         p.close()
 
-        results.sort(key=lambda p: p[1], reverse = True)
+        # Filter out undefined results
+        if filter_nan:
+            results = [(t,v) for t,v in results if np.isfinite(v)]
+
+        dtype = [('term', np.dtype(type(term))), ('value', np.float)]
+        # NB: numpy >= 1.4 sorts NaN to the end
+        results = np.array(results, dtype=dtype)
+        results.sort(order='value')
+        results = results[::-1]
 
         return results
 
@@ -127,17 +152,17 @@ class CorpusModel(object):
         self.model = model
         
 
-    def similar_terms(self, term):
+    def similar_terms(self, term, filter_nan=False):
 
         i = self.corpus.term_types_str.index(term)
         
-        cosines = self.model.similar_terms(i)
+        cosines = self.model.similar_terms(i, filter_nan=filter_nan)
 
         return [(self.corpus.term_types_str[t], v)
                 for t,v in cosines]
 
 
-    def similar_documents(self, document):
+    def similar_documents(self, documentm, filter_nan=False):
 
         doc_names = self.corpus.tokens_meta['articles']
         doc_names_alist = zip(*doc_names.iteritems())
@@ -145,7 +170,7 @@ class CorpusModel(object):
 
         i = doc_names_rev[document]
         
-        cosines = self.model.similar_documents(i)
+        cosines = self.model.similar_documents(i, filter_nan=filter_nan)
 
         return [(doc_names[d], v) for d,v in cosines]
 
