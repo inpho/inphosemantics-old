@@ -56,13 +56,13 @@ class SparseMatrix(lil_matrix):
     def dumpz(self, **kwargs):
 
         tmp_dir = tempfile.mkdtemp()
-        tmp = os.path.join(tmp_dir, self.filename)
+        tmp = os.path.join(tmp_dir, 'tmp-file.mtx')
 
         mmwrite(tmp, self.tocsr(), **kwargs)
 
         # Need to reopen tmp as mmwrite closed it
         f = open(tmp, 'r')
-        out = bz2.BZ2File(self.filename + '.bz2', 'w')
+        out = bz2.BZ2File(self.filename, 'w')
         try:
             out.writelines(f)
         finally:
@@ -107,7 +107,7 @@ class DenseMatrix(matrix):
 
         # Need to reopen tmp as mmwrite closed it
         f = open(tmp, 'r')
-        out = bz2.BZ2File(self.filename + '.bz2', 'w')
+        out = bz2.BZ2File(self.filename, 'w')
         try:
             out.writelines(f)
         finally:

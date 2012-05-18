@@ -1,11 +1,9 @@
-import os.path
 import bz2
 import pickle
-import codecs
 
 import numpy as np
 
-from nltk.corpus import stopwords as nltk_stopwords
+from inphosemantics import *
 
 
 
@@ -28,6 +26,8 @@ class BaseCorpus(object):
 
         self._set_term_types()
 
+        self.filename = filename
+        
 
     def __getitem__(self, i):
         return self.term_tokens[i]
@@ -71,7 +71,7 @@ class BaseCorpus(object):
 
     def dumpz(self):
 
-        f = bz2.BZ2File(self.filename + '.bz2', 'w')
+        f = bz2.BZ2File(self.filename, 'w')
         try:
             f.write(pickle.dumps(self))
         finally:
@@ -105,32 +105,20 @@ class BaseCorpus(object):
                 
                 for i,j in enumerate(v):
                     
-                    if ((i < len(v)-1 and j > v[i+1]) 
-                        or j >= len(self.term_tokens)):
-                        
-                        #TODO: Define a proper exception
-                        raise Exception('invalid tokenization', k, v)
+                    if i < len(v)-1 and j > v[i+1]: 
+                        raise Exception('malsorted tokenization for ' + str(k)
+                                        + ': tokens ' + str(j)
+                                        + ' and ' + str(v[i+1]))
+                    
+                    if j >= len(self.term_tokens):
+                        print v[-30:]
+                        raise Exception('invalid tokenization for ' + str(k)
+                                        + ': ' + str(j) + ' is out of range ('
+                                        + str(len(self.term_tokens)) + ')')
+
+                    #TODO: Define a proper exception
 
         return True
-
-
-
-def load_picklez(filename):
-    """
-    Takes a filename and loads it as though it were a python pickle.
-    If the file ends in '.bz2', tries to decompress it first.
-    """
-    if filename.endswith('.bz2'):
-
-        f = bz2.BZ2File(filename, 'r')
-        try:
-            return pickle.loads(f.read())
-        finally:
-            f.close()
-    
-    else:
-        with open(filename, 'rb') as f:
-            return pickle.load(f)
 
 
 
@@ -198,7 +186,7 @@ def test_BaseCorpus():
 
     from inphosemantics.corpus.tokenizer import IepTokens
 
-    path = 'test-data/iep-selected'
+    path = 'test-data/iep/selected/corpus/plain'
 
     tokens = IepTokens(path)
 
@@ -219,7 +207,7 @@ def test_integer_corpus():
 
     from inphosemantics.corpus.tokenizer import IepTokens
 
-    path = 'test-data/iep-selected'
+    path = 'test-data/iep/selected/corpus/plain'
 
     tokens = IepTokens(path)
 
@@ -248,7 +236,7 @@ def test_Corpus():
 
     from inphosemantics.corpus.tokenizer import IepTokens
 
-    path = 'test-data/iep-selected'
+    path = 'test-data/iep/selected/corpus/plain'
 
     tokens = IepTokens(path)
 
@@ -275,10 +263,25 @@ def test_Corpus():
     return c
 
 
+def test_Corpus_dump():
+
+    from inphosemantics.corpus.tokenizer import IepTokens
+
+    path = 'test-data/iep/selected/corpus/plain'
+    filename = 'test-data/iep/selected/corpus/iep-selected.pickle.bz2'
+
+    tokens = IepTokens(path)
+
+    c = Corpus(tokens.word_tokens, tokens.tokens_dict,
+               tokens.tokens_metadata, filename)
+
+    c.dumpz()
 
 
+# import codecs
+# import os.path
 
-
+# from nltk.corpus import stopwords as nltk_stopwords
 
 # class CorpusBase(object):
 

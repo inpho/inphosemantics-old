@@ -1,4 +1,4 @@
-import os.path
+import os
 import re
 import pickle
 import codecs
@@ -7,33 +7,6 @@ from nltk import TreebankWordTokenizer
 import nltk.data
 
 
-
-
-
-######################################################################
-#                              Utilities
-######################################################################
-
-
-def strip_punc(tsent):
-    p1 = re.compile(r'^(\W*)')
-    p2 = re.compile(r'(\W*)$')
-    out = []
-    for word in tsent:
-        w = re.sub(p2, '', re.sub(p1, '', word))
-        if w:
-            out.append(w)
-    return out
-
-
-def rem_num(tsent):
-    p = re.compile(r'(^\D+$)|(^\D*[0-2]\d\D*$)')
-    return [word for word in tsent
-            if re.search(p, word)]
-
-
-def rehyph(sent):
-    return re.sub(r'(?P<x1>.)--(?P<x2>.)', '\g<x1> - \g<x2>', sent)
 
 
 
@@ -113,6 +86,37 @@ def textfile_tokenize(path):
 
     return out
 
+######################################################################
+#                              Utilities
+######################################################################
+
+
+def strip_punc(tsent):
+    p1 = re.compile(r'^(\W*)')
+    p2 = re.compile(r'(\W*)$')
+    out = []
+    for word in tsent:
+        w = re.sub(p2, '', re.sub(p1, '', word))
+        if w:
+            out.append(w)
+    return out
+
+
+def rem_num(tsent):
+    p = re.compile(r'(^\D+$)|(^\D*[0-2]\d\D*$)')
+    return [word for word in tsent
+            if re.search(p, word)]
+
+
+def rehyph(sent):
+    return re.sub(r'(?P<x1>.)--(?P<x2>.)', '\g<x1> - \g<x2>', sent)
+
+
+
+
+######################################################################
+#                 Corpus-specific tokenizing classes
+######################################################################
 
 class SepTokens(object):
 
@@ -137,6 +141,7 @@ class SepTokens(object):
 
         #TODO: Write this loop, etc in proper recursive form.
 
+        print 'Computing article and paragraph tokens'
         for i,article in enumerate(articles):
 
             print 'Processing article in', self.articles_meta[i]
@@ -158,14 +163,22 @@ class SepTokens(object):
             article_tokens.append(sum(sentence_spans))
 
 
-        sentence_tokens =\
-            [sum(sentence_spans[:i+1])
-             for i in xrange(len(sentence_spans) - 1)]
+        print 'Computing sentence tokens'
+        acc = 0
+        sentence_tokens = []
+        for i in sentence_spans:
+            acc += i
+            sentence_tokens.append(acc)
 
 
-        article_tokens = article_tokens[:-1]
-        paragraph_tokens = paragraph_tokens[:-1]
-        sentence_tokens = sentence_tokens[:-1]
+        while article_tokens[-1] == len(self.word_tokens):
+            article_tokens.pop()
+
+        while paragraph_tokens[-1] == len(self.word_tokens):
+            paragraph_tokens.pop()
+
+        while sentence_tokens[-1] == len(self.word_tokens):
+            sentence_tokens.pop()
 
 
         return article_tokens, paragraph_tokens,\
@@ -228,7 +241,7 @@ def test_tokenizers():
 
 def test_IepTokens():
 
-    path = 'test-data/iep-selected'
+    path = 'test-data/iep/selected/corpus/plain'
 
     tokens = IepTokens(path)
 
@@ -237,6 +250,12 @@ def test_IepTokens():
     print '\nSentence breaks:\n', tokens.sentences
 
     return tokens
+
+
+
+
+
+
 
 
 

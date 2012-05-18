@@ -1,7 +1,28 @@
+import bz2
+import pickle
+
+def load_picklez(filename):
+    """
+    Takes a filename and loads it as though it were a python pickle.
+    If the file ends in '.bz2', tries to decompress it first.
+    """
+    if filename.endswith('.bz2'):
+
+        f = bz2.BZ2File(filename, 'r')
+        try:
+            return pickle.loads(f.read())
+        finally:
+            f.close()
+    
+    else:
+        with open(filename, 'rb') as f:
+            return pickle.load(f)
+
+
 # To deprecate
-from inphosemantics.corpus import Corpus
-from inphosemantics.model.vectorspacemodel\
-    import VectorSpaceModel as Model
+# from inphosemantics.corpus import Corpus
+# from inphosemantics.model.vectorspacemodel\
+#     import VectorSpaceModel as Model
 
 ######################################################################
 # from inphosemantics.model.beagle\
