@@ -3,10 +3,10 @@ from multiprocessing import Pool
 
 import numpy as np
 
+from inphosemantics import load_picklez
 from inphosemantics.model.matrix\
     import SparseMatrix, DenseMatrix, load_matrix
-from inphosemantics import load_picklez
-
+from inphosemantics.model.viewdata import ViewData
 
 # TODO: Replace CorpusModel with a system of classes that gives a
 # generic interface to viewer classes specific to each model class
@@ -131,6 +131,9 @@ class TFModel(object):
 
         return results
 
+
+    def cf(self, term):
+        pass
     
     def cfs(self):
         """
@@ -138,63 +141,42 @@ class TFModel(object):
         pass
 
     
-class ViewTFData(object):
-
-    def __init__(self, corpus=None, corpus_filename=None, 
-                 model=None, matrix=None, matrix_filename=None,
-                 document_type='documents', stoplist=None):
-
-        if corpus:
-            if corpus_filename:
-                raise Exception("Both a corpus and a "
-                                "corpus filename were given.")
-            self.corpus = corpus
-
-        elif corpus_filename:
-            self.corpus = load_picklez(corpus_filename)
-
-        else:
-            raise Exception("Neither a corpus nor a "
-                            "corpus filename were given.")
-            
-
-        if model:
-            if matrix:
-                raise Exception("Both a model and a "
-                                "matrix were given.")
-            elif matrix_filename:
-                raise Exception("Both a model and a "
-                                "matrix filename were given.")
-            else:
-                self.model = model
-                
-        elif matrix:
-            if matrix_filename:
-                raise Exception("Both a matrix and a "
-                                "matrix filename were given.")
-            else:
-                self.model = TFModel(matrix=matrix,
-                                     document_type=document_type)
-
-        elif matrix_filename:
-            self.model = TFModel(matrix_filename=matrix_filename,
-                                 document_type=document_type)
-            self.model.load_matrix()
-
-        else:
-            raise Exception("Neither a model, matrix nor "
-                            "matrix filename were given.")
-
-        if stoplist:
-            self.stoplist = self.encode_stoplist()
+class ViewTFData(ViewData):
 
 
-    def encode_stoplist(self):
-
+    def cf(self, term):
         pass
 
-    
+    def cfs(self):
+        pass
 
+
+    
+def test_TFModel():
+
+    corpus_filename =\
+        'test-data/iep/selected/corpus/iep-selected.pickle.bz2'
+    matrix_filename =\
+        'test-data/iep/selected/models/iep-selected-tf-word-article.mtx.bz2'
+
+    corpus = load_picklez(corpus_filename)
+
+    model = TFModel(matrix_filename, 'articles')
+
+    model.train(corpus)
+
+    model.dumpz()
+
+    model = TFModel(matrix_filename, 'articles')
+
+    model.load_matrix()
+
+    return corpus, model
+
+
+
+###########################################################################
+#                   Deprecate in favor of ViewData
 
 class CorpusModel(object):
 
@@ -225,31 +207,6 @@ class CorpusModel(object):
         cosines = self.model.similar_documents(i, filter_nan=filter_nan)
 
         return [(doc_names[d], v) for d,v in cosines]
-
-
-
-
-def test_TFModel():
-
-    corpus_filename =\
-        'test-data/iep/selected/corpus/iep-selected.pickle.bz2'
-    matrix_filename =\
-        'test-data/iep/selected/models/iep-selected-tf-word-article.mtx.bz2'
-
-    corpus = load_picklez(corpus_filename)
-
-    model = TFModel(matrix_filename, 'articles')
-
-    model.train(corpus)
-
-    model.dumpz()
-
-    model = TFModel(matrix_filename, 'articles')
-
-    model.load_matrix()
-
-    return corpus, model
-
 
 
 
