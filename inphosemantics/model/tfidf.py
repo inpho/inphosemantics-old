@@ -3,11 +3,11 @@ from __future__ import division
 import numpy as np
 
 from inphosemantics import load_picklez
-from inphosemantics.model.tf import TFModel
+from inphosemantics.model.tf import TfModel
 
 
 
-class TFIDFModel(TFModel):
+class TfIdfModel(TfModel):
 
     def idf(self, term):
 
@@ -19,7 +19,7 @@ class TFIDFModel(TFModel):
     
     def train(self, corpus):
         
-        super(TFIDFModel, self).train(corpus)
+        super(TfIdfModel, self).train(corpus)
 
         for i in xrange(self.td_matrix.shape[0]):
             self.td_matrix[i,:] *= self.idf(i)
@@ -38,7 +38,7 @@ class TFIDFModel(TFModel):
 
 
 
-def test_TFIDFModel():
+def test_TfIdfModel():
 
     corpus_filename =\
         'test-data/iep/selected/corpus/iep-selected.pickle.bz2'
@@ -47,13 +47,13 @@ def test_TFIDFModel():
 
     corpus = load_picklez(corpus_filename)
 
-    model = TFIDFModel(matrix_filename, 'articles')
+    model = TfIdfModel(matrix_filename, 'articles')
 
     model.train(corpus)
 
     model.dumpz()
 
-    model = TFIDFModel(matrix_filename, 'articles')
+    model = TfIdfModel(matrix_filename, 'articles')
 
     model.load_matrix()
 

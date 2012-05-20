@@ -6,9 +6,9 @@ from nltk.corpus import stopwords as nltk_stopwords
 from inphosemantics import *
 from inphosemantics.corpus.tokenizer import IepTokens
 from inphosemantics.corpus import Corpus
-from inphosemantics.model.tf import TFModel, TFIDFModel
+from inphosemantics.model.tf import TfModel, ViewTfData
+from inphosemantics.model.tfidf import TfIdfModel, ViewTfIdfData
 
-from inphosemantics.model.tf import CorpusModel
 
 
 corpus = '/var/inphosemantics/data/iep/complete/corpus'
@@ -19,6 +19,7 @@ tf_word_article = 'iep-complete-tf-word-article.mtx.bz2'
 tfidf_word_article = 'iep-complete-tfidf-word-article.mtx.bz2'
 
 
+# TODO: Replace CorpusModel with ViewData subclasses
 
 def gen_corpus_file():
 
@@ -33,18 +34,18 @@ def gen_corpus_file():
     c.dumpz()
 
 
-def digitize_stoplist(c):
+# def digitize_stoplist(c):
 
-    stoplist = nltk_stopwords.words('english')
+#     stoplist = nltk_stopwords.words('english')
 
-    decoder = dict(zip(c.term_types_str, xrange(len(c.term_types))))
+#     decoder = dict(zip(c.term_types_str, xrange(len(c.term_types))))
     
-    out = c.decode(stoplist, decoder)
-    # It's possible that the stop list and the corpus term types do
-    # not completely overlap
-    out = [i for i in out if np.isfinite(i)]
+#     out = c.decode(stoplist, decoder)
+#     # It's possible that the stop list and the corpus term types do
+#     # not completely overlap
+#     out = [i for i in out if np.isfinite(i)]
 
-    return out
+#     return out
 
 
 def train_tf_model():
@@ -55,7 +56,7 @@ def train_tf_model():
     document_type = 'articles'
 
     print 'Training term frequency model'
-    m = TFModel(os.path.join(models, tf_word_article), document_type)
+    m = TfModel(os.path.join(models, tf_word_article), document_type)
     m.train(c)
     
     print 'Saving matrix'
@@ -70,28 +71,42 @@ def train_tfidf_model():
     document_type = 'articles'
 
     print 'Training TF-IDF model'
-    m = TFIDFModel(os.path.join(models, tfidf_word_article), document_type)
+    m = TfIdfModel(os.path.join(models, tfidf_word_article), document_type)
     m.train(c)
     
     print 'Saving matrix'
     m.dumpz()
 
 
-
 def tf_viewer():
 
-    print 'Loading corpus'
-    c = load_picklez(os.path.join(corpus, complete))
-    s = digitize_stoplist(c)
+    corpus_filename = os.path.join(corpus, complete)
+    model_filename = os.path.join(models, tf_word_article)
 
-    document_type = 'articles'
+    stoplist = nltk_stopwords.words('english')
+    
+    v = ViewTfData(corpus_filename=corpus_filename,
+                   matrix_filename=matrix_filename,
+                   document_type='articles', stoplist=stoplist)
 
-    print 'Loading term frequency model'
-    m = TFModel(os.path.join(models, tf_word_article), document_type)
-    m.load_matrix()
-    m.apply_stoplist(s)
+    return v
 
-    return CorpusModel(c, m)
+
+
+# def tf_viewer():
+
+#     print 'Loading corpus'
+#     c = load_picklez(os.path.join(corpus, complete))
+#     s = digitize_stoplist(c)
+
+#     document_type = 'articles'
+
+#     print 'Loading term frequency model'
+#     m = TfModel(os.path.join(models, tf_word_article), document_type)
+#     m.load_matrix()
+#     m.apply_stoplist(s)
+
+#     return CorpusModel(c, m)
 
 
 
@@ -104,7 +119,7 @@ def tfidf_viewer():
     document_type = 'articles'
 
     print 'Loading term frequency model'
-    m = TFIDFModel(os.path.join(models, tfidf_word_article), document_type)
+    m = TfIdfModel(os.path.join(models, tfidf_word_article), document_type)
     m.load_matrix()
     m.apply_stoplist(s)
 

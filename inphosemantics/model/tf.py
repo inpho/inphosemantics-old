@@ -35,44 +35,34 @@ def document_fn(i):
                          document_fn.td_matrix[:,i].todense().T)
 
 
-class TFModel(object):
+class TfModel(object):
     """
     """
-    def __init__(self, matrix=None, matrix_filename=None,
-                 document_type=None):
+    def __init__(self, matrix=None):
 
-        self.td_matrix = matrix
-        self.matrix_filename = matrix_filename
-        self.document_type = document_type
+        self.matrix = matrix
 
 
-    def train(self, corpus):
+    def train(self, corpus, document_type):
 
-        if self.document_type:
-            documents = corpus.view_tokens(self.document_type)
-        else:
-            documents = corpus.view_tokens('documents')
-        
+        documents = corpus.view_tokens(document_type)
         shape = (len(corpus.term_types), len(documents))
 
-        self.td_matrix =\
-            SparseMatrix(shape, filename=self.matrix_filename)
-
+        self.matrix = SparseMatrix(shape)
         
         for j,document in enumerate(documents):
             for term in document:
-                self.td_matrix[term,j] += 1
+                self.matrix[term,j] += 1
 
 
+    def load_matrix(self, filename):
 
-    def load_matrix(self):
-
-        self.td_matrix = load_matrix(self.matrix_filename)
+        self.matrix = load_matrix(filename)
 
 
-    def dumpz(self):
+    def dumpz(self, filename):
         
-        self.td_matrix.dumpz(comment=time.asctime())
+        self.matrix.dumpz(filename, comment=time.asctime())
 
 
     def apply_stoplist(self, stoplist):
@@ -82,18 +72,18 @@ class TFModel(object):
         #filtered out.
 
         for i in stoplist:
-            self.td_matrix[i,:] = np.zeros(self.td_matrix.shape[1])
+            self.matrix[i,:] = np.zeros(self.matrix.shape[1])
 
 
 
     #TODO: These are almost the same function....
     def similar_terms(self, term, filter_nan=False):
 
-        term_fn.v1 = self.td_matrix[term,:].todense()
-        term_fn.td_matrix = self.td_matrix
+        term_fn.v1 = self.matrix[term,:].todense()
+        term_fn.matrix = self.matrix
 
         p = Pool()
-        results = p.map(term_fn, range(self.td_matrix.shape[0]))
+        results = p.map(term_fn, range(self.matrix.shape[0]))
         p.close()
 
         # Filter out undefined results
@@ -110,13 +100,13 @@ class TFModel(object):
 
 
 
-    def similar_documents(self, document, stoplist=None, filter_nan=False):
+    def similar_documents(self, document, filter_nan=False):
 
-        document_fn.v1 = self.td_matrix[:,document].todense().T
-        document_fn.td_matrix = self.td_matrix
+        document_fn.v1 = self.matrix[:,document].todense().T
+        document_fn.matrix = self.matrix
 
         p = Pool()
-        results = p.map(document_fn, range(self.td_matrix.shape[1]))
+        results = p.map(document_fn, range(self.matrix.shape[1]))
         p.close()
 
         # Filter out undefined results
@@ -140,8 +130,39 @@ class TFModel(object):
         """
         pass
 
-    
-class ViewTFData(ViewData):
+
+
+class ViewTfData(ViewData):
+
+    def __init__(self,
+                 corpus=None,
+                 corpus_filename=None, 
+                 model=None,
+                 matrix=None,
+                 matrix_filename=None,
+                 document_type=None,
+                 stoplist=None):
+
+        if matrix:
+            super(ViewData, self)\
+                .__init__(self,
+                          corpus=corpus,
+                          corpus_filename=corpus_filename, 
+                          model=model,
+                          model_type=TfModel,
+                          matrix=matrix,
+                          matrix_filename=matrix_filename,
+                          document_type=document_type,
+                          stoplist=stoplist))
+        else:
+            super(ViewData, self)\
+                .__init__(self,
+                          corpus=corpus,
+                          corpus_filename=corpus_filename, 
+                          model=model,
+                          matrix_filename=matrix_filename,
+                          document_type=document_type,
+                          stoplist=stoplist))
 
 
     def cf(self, term):
@@ -152,77 +173,76 @@ class ViewTFData(ViewData):
 
 
     
-def test_TFModel():
+def test_TfModel():
 
     corpus_filename =\
         'test-data/iep/selected/corpus/iep-selected.pickle.bz2'
     matrix_filename =\
         'test-data/iep/selected/models/iep-selected-tf-word-article.mtx.bz2'
+    document_type = 'articles'
 
     corpus = load_picklez(corpus_filename)
 
-    model = TFModel(matrix_filename, 'articles')
+    model = TfModel()
 
-    model.train(corpus)
+    model.train(corpus, 'articles')
 
-    model.dumpz()
+    model.dumpz(matrix_filename)
 
-    model = TFModel(matrix_filename, 'articles')
+    model.load_matrix(matrix_filename)
 
-    model.load_matrix()
-
-    return corpus, model
+    return corpus, model, document_type
 
 
 
 ###########################################################################
 #                   Deprecate in favor of ViewData
 
-class CorpusModel(object):
+# class CorpusModel(object):
 
-    def __init__(self, corpus=None, model=None):
+#     def __init__(self, corpus=None, model=None):
 
-        self.corpus = corpus
-        self.model = model
+#         self.corpus = corpus
+#         self.model = model
         
 
-    def similar_terms(self, term, filter_nan=False):
+#     def similar_terms(self, term, filter_nan=False):
 
-        i = self.corpus.term_types_str.index(term)
+#         i = self.corpus.term_types_str.index(term)
         
-        cosines = self.model.similar_terms(i, filter_nan=filter_nan)
+#         cosines = self.model.similar_terms(i, filter_nan=filter_nan)
 
-        return [(self.corpus.term_types_str[t], v)
-                for t,v in cosines]
+#         return [(self.corpus.term_types_str[t], v)
+#                 for t,v in cosines]
 
 
-    def similar_documents(self, documentm, filter_nan=False):
+#     def similar_documents(self, documentm, filter_nan=False):
 
-        doc_names = self.corpus.tokens_meta['articles']
-        doc_names_alist = zip(*doc_names.iteritems())
-        doc_names_rev = dict(zip(doc_names_alist[1], doc_names_alist[0]))
+#         doc_names = self.corpus.tokens_meta['articles']
+#         doc_names_alist = zip(*doc_names.iteritems())
+#         doc_names_rev = dict(zip(doc_names_alist[1], doc_names_alist[0]))
 
-        i = doc_names_rev[document]
+#         i = doc_names_rev[document]
         
-        cosines = self.model.similar_documents(i, filter_nan=filter_nan)
+#         cosines = self.model.similar_documents(i, filter_nan=filter_nan)
 
-        return [(doc_names[d], v) for d,v in cosines]
+#         return [(doc_names[d], v) for d,v in cosines]
 
 
 
-def test_CorpusModel():
+# def test_CorpusModel():
 
-    corpus_filename =\
-        'test-data/iep/selected/corpus/iep-selected.pickle.bz2'
-    matrix_filename =\
-        'test-data/iep/selected/models/iep-selected-tf-word-article.mtx.bz2'
+#     corpus_filename =\
+#         'test-data/iep/selected/corpus/iep-selected.pickle.bz2'
+#     matrix_filename =\
+#         'test-data/iep/selected/models/iep-selected-tf-word-article.mtx.bz2'
 
-    corpus = load_picklez(corpus_filename)
+#     corpus = load_picklez(corpus_filename)
 
-    model = TFModel(matrix_filename, 'articles')
+#     model = TfModel(matrix_filename, 'articles')
 
-    model.load_matrix()
+#     model.load_matrix()
 
-    cm = CorpusModel(corpus, model)
+#     cm = CorpusModel(corpus, model)
 
-    return cm
+#     return cm

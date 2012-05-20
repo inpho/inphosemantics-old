@@ -16,8 +16,7 @@ class BaseCorpus(object):
     indices. They are verified presently at initialization.
 
     """
-    def __init__(self, term_tokens, tokens_dict=None, dtype=None,
-                 filename=None):
+    def __init__(self, term_tokens, tokens_dict=None, dtype=None):
 
         self.term_tokens = np.asarray(term_tokens, dtype=dtype)
 
@@ -26,8 +25,7 @@ class BaseCorpus(object):
 
         self._set_term_types()
 
-        self.filename = filename
-        
+
 
     def __getitem__(self, i):
         return self.term_tokens[i]
@@ -76,22 +74,22 @@ class BaseCorpus(object):
 
 
     
-    def dump(self):
+    def dump(self, filename):
 
-        with open(self.filename, 'wb') as f:
+        with open(filename, 'wb') as f:
             pickle.dump(self, f)
 
 
-    def dumpz(self):
+    def dumpz(self, filename):
 
-        f = bz2.BZ2File(self.filename, 'w')
+        f = bz2.BZ2File(filename, 'w')
         try:
             f.write(pickle.dumps(self))
         finally:
             f.close()
 
     
-    def digitize(self):
+    def encode(self):
 
         print 'Getting word types'
         words = self.term_types
@@ -100,11 +98,11 @@ class BaseCorpus(object):
         print 'Extracting sequence of word tokens'
         int_corp = [word_dict[token] for token in self.term_tokens]
 
-        digitized_corpus =\
+        encoded_corpus =\
             BaseCorpus(int_corp, tokens_dict=self.tokens_dict,
                        dtype=np.uint32)
     
-        return digitized_corpus, self.term_types
+        return encoded_corpus, self.term_types
 
 
     def validate_tokens_dict(self):
@@ -143,32 +141,27 @@ class Corpus(BaseCorpus):
 
     filename
 
-    stoplist
-
     metadata associated with any given tokenization: terms, sentences,
     etc.
 
     Expected usage. term_tokens would be the atomic tokens (e.g.,
-    words) as strings. Instantiation of Corpus will digitize
+    words) as strings. Instantiation of Corpus will encode
     term_tokens and store term_types as a list of strings under
     self.term_types_str.
     
     """
     
-    def __init__(self, term_tokens, tokens_dict=None, tokens_meta=None,
-                 filename=None, stoplist=None):
+    def __init__(self, term_tokens, tokens_dict=None, tokens_meta=None):
 
-        BaseCorpus.__init__(self, term_tokens, tokens_dict=tokens_dict,
-                            filename=filename)
+        BaseCorpus.__init__(self, term_tokens, tokens_dict=tokens_dict)
         
-        int_corp = self.digitize()
+        int_corp = self.encode()
 
         self.term_tokens = int_corp[0].term_tokens
         # just the list of integers 0, ..., n
         self.term_types = int_corp[0].term_types 
         self.term_types_str = int_corp[1]
 
-        self.stoplist = stoplist
         self.tokens_meta = tokens_meta
 
 
@@ -191,8 +184,9 @@ class Corpus(BaseCorpus):
 ############################
 
 def genBaseCorpus():
-    return BaseCorpus(['cats','chase','dogs','dogs','do','not','chase','cats'], {'sentences' : [3]})
-
+    return BaseCorpus(['cats','chase','dogs','dogs',
+                       'do','not','chase','cats'],
+                      {'sentences' : [3]})
 
 
 def test_BaseCorpus():
@@ -226,7 +220,7 @@ def test_integer_corpus():
 
     c = BaseCorpus(tokens.word_tokens, tokens.tokens_dict)
 
-    int_corpus, decoder = c.digitize()
+    int_corpus, decoder = c.encode()
 
     print 'First article:\n',\
           int_corpus.view_tokens('articles', decoder)[1]
@@ -276,7 +270,7 @@ def test_Corpus():
     return c
 
 
-def test_Corpus_dump():
+def test_Corpus_dumpz():
 
     from inphosemantics.corpus.tokenizer import IepTokens
 
@@ -286,9 +280,9 @@ def test_Corpus_dump():
     tokens = IepTokens(path)
 
     c = Corpus(tokens.word_tokens, tokens.tokens_dict,
-               tokens.tokens_metadata, filename)
+               tokens.tokens_metadata)
 
-    c.dumpz()
+    c.dumpz(filename)
 
 
 
