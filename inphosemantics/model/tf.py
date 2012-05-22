@@ -6,10 +6,7 @@ import numpy as np
 from inphosemantics import load_picklez
 from inphosemantics.model.matrix\
     import SparseMatrix, DenseMatrix, load_matrix
-from inphosemantics.model.viewdata import ViewData
-
-# TODO: Replace CorpusModel with a system of classes that gives a
-# generic interface to viewer classes specific to each model class
+from inphosemantics.model.dataviewer import DataViewer
 
 
 
@@ -28,11 +25,11 @@ def vector_cos(v,w):
 
 # Sit out here for multiprocessing
 def term_fn(i):
-    return i, vector_cos(term_fn.v1, term_fn.td_matrix[i,:].todense())
+    return i, vector_cos(term_fn.v1, term_fn.matrix[i,:].todense())
 
 def document_fn(i):
     return i, vector_cos(document_fn.v1,
-                         document_fn.td_matrix[:,i].todense().T)
+                         document_fn.matrix[:,i].todense().T)
 
 
 class TfModel(object):
@@ -132,7 +129,7 @@ class TfModel(object):
 
 
 
-class ViewTfData(ViewData):
+class TfDataViewer(DataViewer):
 
     def __init__(self,
                  corpus=None,
@@ -143,26 +140,24 @@ class ViewTfData(ViewData):
                  document_type=None,
                  stoplist=None):
 
-        if matrix:
-            super(ViewData, self)\
-                .__init__(self,
-                          corpus=corpus,
+        if matrix or matrix_filename:
+            super(TfDataViewer, self)\
+                .__init__(corpus=corpus,
                           corpus_filename=corpus_filename, 
                           model=model,
                           model_type=TfModel,
                           matrix=matrix,
                           matrix_filename=matrix_filename,
                           document_type=document_type,
-                          stoplist=stoplist))
+                          stoplist=stoplist)
         else:
-            super(ViewData, self)\
-                .__init__(self,
-                          corpus=corpus,
+            super(TfDataViewer, self)\
+                .__init__(corpus=corpus,
                           corpus_filename=corpus_filename, 
                           model=model,
                           matrix_filename=matrix_filename,
                           document_type=document_type,
-                          stoplist=stoplist))
+                          stoplist=stoplist)
 
 
     def cf(self, term):
@@ -192,57 +187,3 @@ def test_TfModel():
     model.load_matrix(matrix_filename)
 
     return corpus, model, document_type
-
-
-
-###########################################################################
-#                   Deprecate in favor of ViewData
-
-# class CorpusModel(object):
-
-#     def __init__(self, corpus=None, model=None):
-
-#         self.corpus = corpus
-#         self.model = model
-        
-
-#     def similar_terms(self, term, filter_nan=False):
-
-#         i = self.corpus.term_types_str.index(term)
-        
-#         cosines = self.model.similar_terms(i, filter_nan=filter_nan)
-
-#         return [(self.corpus.term_types_str[t], v)
-#                 for t,v in cosines]
-
-
-#     def similar_documents(self, documentm, filter_nan=False):
-
-#         doc_names = self.corpus.tokens_meta['articles']
-#         doc_names_alist = zip(*doc_names.iteritems())
-#         doc_names_rev = dict(zip(doc_names_alist[1], doc_names_alist[0]))
-
-#         i = doc_names_rev[document]
-        
-#         cosines = self.model.similar_documents(i, filter_nan=filter_nan)
-
-#         return [(doc_names[d], v) for d,v in cosines]
-
-
-
-# def test_CorpusModel():
-
-#     corpus_filename =\
-#         'test-data/iep/selected/corpus/iep-selected.pickle.bz2'
-#     matrix_filename =\
-#         'test-data/iep/selected/models/iep-selected-tf-word-article.mtx.bz2'
-
-#     corpus = load_picklez(corpus_filename)
-
-#     model = TfModel(matrix_filename, 'articles')
-
-#     model.load_matrix()
-
-#     cm = CorpusModel(corpus, model)
-
-#     return cm
