@@ -3,11 +3,30 @@ from __future__ import division
 import numpy as np
 
 from inphosemantics import load_picklez
-from inphosemantics.model.tf import TfModel, TfViewer
+from inphosemantics.model import Model
+from inphosemantics.model.viewer import Viewer
+from inphosemantics.model.tf import TfModel
 
 
+class TfIdfModel(Model):
+    
+    def train(self,
+              corpus,
+              token_type,
+              stoplist=None,
+              tf_matrix=None):
+        """
+        stoplist is ignored in training this type of model.
+        """
+        if tf_matrix:
+            self.matrix = tf_matrix
+        else:
+            tf_model = TfModel()
+            tf_model.train(corpus, token_type, stoplist)
+            self.matrix = tf_model.matrix
 
-class TfIdfModel(TfModel):
+        for i in xrange(self.matrix.shape[0]):
+            self.matrix[i,:] *= self.idf(i)
 
     def idf(self, term):
 
@@ -15,18 +34,6 @@ class TfIdfModel(TfModel):
         # scale
         return np.log(self.matrix.shape[1]
                       / self.matrix[term,:].nnz)
-
-    
-    def train(self, corpus, column_type, row_filter=None):
-        """
-        row_filter is ignored in training this type of model.
-        """
-        super(TfIdfModel, self)\
-            .train(corpus, column_type, row_filter=row_filter)
-
-        for i in xrange(self.matrix.shape[0]):
-            self.matrix[i,:] *= self.idf(i)
-
 
     def idfs(self):
 
@@ -41,7 +48,7 @@ class TfIdfModel(TfModel):
 
 
 
-class TfIdfViewer(TfViewer):
+class TfIdfViewer(Viewer):
 
     def __init__(self,
                  corpus=None,

@@ -1,7 +1,7 @@
 from inphosemantics import *
 from inphosemantics.model import Model
 from inphosemantics.model.matrix import SparseMatrix
-from inphosemantics.model.dataviewer import Viewer
+from inphosemantics.model.viewer import Viewer
 
 
 
@@ -13,17 +13,17 @@ class TfModel(Model):
         super(TfModel, self).__init__(matrix)
 
 
-    def train(self, corpus, column_type, row_filter=None):
+    def train(self, corpus, token_type, stoplist=None):
         """
-        row_filter is ignored in training this type of model.
+        stoplist is ignored in training this type of model.
         """
-        documents = corpus.view_tokens(document_type)
-        shape = (len(corpus.term_types), len(documents))
+        tokens = corpus.view_tokens(token_type)
+        shape = (len(corpus.term_types), len(tokens))
 
         self.matrix = SparseMatrix(shape)
         
-        for j,document in enumerate(documents):
-            for term in document:
+        for j,token in enumerate(tokens):
+            for term in token:
                 self.matrix[term,j] += 1
 
 

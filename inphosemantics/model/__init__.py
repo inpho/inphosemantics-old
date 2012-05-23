@@ -42,8 +42,8 @@ class Model(object):
 
     def train(self,
               corpus,
-              column_type,
-              row_filter=None):
+              token_type,
+              stoplist=None):
         pass
 
 
