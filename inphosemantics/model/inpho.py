@@ -3,7 +3,8 @@ import os
 from nltk.corpus import stopwords as nltk_stopwords
 
 from inphosemantics import *
-from inphosemantics.model.tf import TfModel, TfDataViewer
+from inphosemantics.model.tf import TfModel, TfViewer
+from inphosemantics.model.tfidf import TfIdfModel, TfIdfViewer
 from inphosemantics.corpus.tokenizer import IepTokens, SepTokens
 
 root = '/var/inphosemantics/data'
@@ -12,17 +13,17 @@ root = '/var/inphosemantics/data'
 #TODO: These dictionaries could be consolidated. As well, additional
 #data might be included.
 
-viewer_dict = dict(tf = TfDataViewer,
-                   # tfidf = TfIdfDataViewer,
-                   # beagle-environment = BeagleEnvironmentDataViewer,
-                   # beagle-context = BeagleContextDataViewer,
-                   # beagle-order = BeagleOrderDataViewer,
-                   # beagle-composite = BeagleCompositeDataViewer
+viewer_dict = dict(tf = TfViewer,
+                   tfidf = TfIdfViewer,
+                   # beagle-environment = BeagleEnvironmentViewer,
+                   # beagle-context = BeagleContextViewer,
+                   # beagle-order = BeagleOrderViewer,
+                   # beagle-composite = BeagleCompositeViewer
                    )
 
 
 model_dict = dict(tf = TfModel,
-                  # tfidf = TfIdfModel,
+                  tfidf = TfIdfModel,
                   # beagle-environment = BeagleEnvironmentModel,
                   # beagle-context = BeagleContextModel,
                   # beagle-order = BeagleOrderModel,
@@ -71,7 +72,7 @@ def gen_matrix_filename(corpus,
 
 
 
-class InphoDataViewer(object):
+class InphoViewer(object):
 
     def __new__(cls,
                 corpus,
@@ -101,7 +102,7 @@ class InphoDataViewer(object):
                   '* Model type was not recognized *\n'\
                   '*********************************\n\n'\
                   'Available model types:\n'\
-                  '   ', ', '.join(viewer_dict.keys)
+                  '   ', ', '.join(viewer_dict.keys())
             
             raise
             
@@ -151,7 +152,7 @@ class InphoTrainer(object):
                   '* Model type was not recognized *\n'\
                   '*********************************\n\n'\
                   'Available model types:\n'\
-                  '   ', ', '.join(model_dict.keys)
+                  '   ', ', '.join(model_dict.keys())
             
             raise
             
@@ -175,12 +176,7 @@ class InphoTrainer(object):
         print 'Training model of type', self.model_type.__name__
         model = self.model_type()
 
-        # TODO: subclass *Model classes so that the train methods have
-        # uniform parameterizations
-        try:
-            model.train(corpus, self.document_type, self.stoplist)
-        except TypeError:
-            model.train(corpus, self.document_type)
+        model.train(corpus, self.document_type, self.stoplist)
 
         print 'Writing matrix to\n'\
               '  ', self.matrix_filename

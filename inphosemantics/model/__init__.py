@@ -23,12 +23,12 @@ def vector_cos(v,w):
 
 
 # Sit out here for multiprocessing
-def term_fn(i):
-    return i, vector_cos(term_fn.v1, term_fn.matrix[i,:].todense())
+def row_fn(i):
+    return i, vector_cos(row_fn.v1, row_fn.matrix[i,:].todense())
 
-def document_fn(i):
-    return i, vector_cos(document_fn.v1,
-                         document_fn.matrix[:,i].todense().T)
+def column_fn(i):
+    return i, vector_cos(column_fn.v1,
+                         column_fn.matrix[:,i].todense().T)
 
 
 
@@ -42,8 +42,8 @@ class Model(object):
 
     def train(self,
               corpus,
-              document_type,
-              stoplist=None):
+              column_type,
+              row_filter=None):
         pass
 
 
@@ -57,32 +57,32 @@ class Model(object):
         self.matrix.dumpz(filename, comment=time.asctime())
 
 
-    def apply_stoplist(self, stoplist):
+    def filter_rows(self, row_filter):
 
-        #Filter stoplist. Zeroing the stop word row makes the
-        #resulting cosine undefined; undefined cosines are later
+        #Used to filter stop words. Zeroing the stop word row makes
+        #the resulting cosine undefined; undefined cosines are later
         #filtered out.
 
-        for i in stoplist:
+        for i in row_filter:
             self.matrix[i,:] = np.zeros(self.matrix.shape[1])
 
 
 
     #TODO: These are almost the same function....
-    def similar_terms(self, term, filter_nan=False):
+    def similar_rows(self, row, filter_nan=False):
 
-        term_fn.v1 = self.matrix[term,:].todense()
-        term_fn.matrix = self.matrix
+        row_fn.v1 = self.matrix[row,:].todense()
+        row_fn.matrix = self.matrix
 
         p = Pool()
-        results = p.map(term_fn, range(self.matrix.shape[0]))
+        results = p.map(row_fn, range(self.matrix.shape[0]))
         p.close()
 
         # Filter out undefined results
         if filter_nan:
-            results = [(t,v) for t,v in results if np.isfinite(v)]
+            results = [(r,v) for r,v in results if np.isfinite(v)]
 
-        dtype = [('term', np.uint32), ('value', np.float)]
+        dtype = [('row', np.uint32), ('value', np.float)]
         # NB: numpy >= 1.4 sorts NaN to the end
         results = np.array(results, dtype=dtype)
         results.sort(order='value')
@@ -92,20 +92,20 @@ class Model(object):
 
 
 
-    def similar_documents(self, document, filter_nan=False):
+    def similar_columns(self, column, filter_nan=False):
 
-        document_fn.v1 = self.matrix[:,document].todense().T
-        document_fn.matrix = self.matrix
+        column_fn.v1 = self.matrix[:,column].todense().T
+        column_fn.matrix = self.matrix
 
         p = Pool()
-        results = p.map(document_fn, range(self.matrix.shape[1]))
+        results = p.map(column_fn, range(self.matrix.shape[1]))
         p.close()
 
         # Filter out undefined results
         if filter_nan:
-            results = [(t,v) for t,v in results if np.isfinite(v)]
+            results = [(c,v) for c,v in results if np.isfinite(v)]
 
-        dtype = [('term', np.uint32), ('value', np.float)]
+        dtype = [('column', np.uint32), ('value', np.float)]
         # NB: numpy >= 1.4 sorts NaN to the end
         results = np.array(results, dtype=dtype)
         results.sort(order='value')

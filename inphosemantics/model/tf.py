@@ -1,7 +1,7 @@
 from inphosemantics import *
 from inphosemantics.model import Model
 from inphosemantics.model.matrix import SparseMatrix
-from inphosemantics.model.dataviewer import DataViewer
+from inphosemantics.model.dataviewer import Viewer
 
 
 
@@ -13,9 +13,9 @@ class TfModel(Model):
         super(TfModel, self).__init__(matrix)
 
 
-    def train(self, corpus, document_type, stoplist=None):
+    def train(self, corpus, column_type, row_filter=None):
         """
-        stoplist is unused in training this type of model.
+        row_filter is ignored in training this type of model.
         """
         documents = corpus.view_tokens(document_type)
         shape = (len(corpus.term_types), len(documents))
@@ -37,7 +37,7 @@ class TfModel(Model):
 
 
 
-class TfDataViewer(DataViewer):
+class TfViewer(Viewer):
 
     def __init__(self,
                  corpus=None,
@@ -49,7 +49,7 @@ class TfDataViewer(DataViewer):
                  stoplist=None):
 
         if matrix or matrix_filename:
-            super(TfDataViewer, self)\
+            super(TfViewer, self)\
                 .__init__(corpus=corpus,
                           corpus_filename=corpus_filename, 
                           model=model,
@@ -59,7 +59,7 @@ class TfDataViewer(DataViewer):
                           document_type=document_type,
                           stoplist=stoplist)
         else:
-            super(TfDataViewer, self)\
+            super(TfViewer, self)\
                 .__init__(corpus=corpus,
                           corpus_filename=corpus_filename, 
                           model=model,

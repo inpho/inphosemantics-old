@@ -3,7 +3,7 @@ import numpy as np
 from inphosemantics import load_picklez
 
 
-class DataViewer(object):
+class Viewer(object):
 
     def __init__(self,
                  corpus=None,
@@ -70,7 +70,7 @@ class DataViewer(object):
         if stoplist:
             self.stoplist = self._encode_stoplist(stoplist)
             print 'Applying stoplist to matrix'
-            self.model.apply_stoplist(self.stoplist)
+            self.model.filter_rows(self.stoplist)
 
 
     def _encode_stoplist(self, stoplist):
@@ -91,7 +91,7 @@ class DataViewer(object):
 
         i = self.corpus.term_types_str.index(term)
         
-        cosines = self.model.similar_terms(i, filter_nan=filter_nan)
+        cosines = self.model.similar_rows(i, filter_nan=filter_nan)
 
         return [(self.corpus.term_types_str[t], v)
                 for t,v in cosines]
@@ -105,13 +105,13 @@ class DataViewer(object):
 
         i = doc_names_rev[document]
         
-        cosines = self.model.similar_documents(i, filter_nan=filter_nan)
+        cosines = self.model.similar_columns(i, filter_nan=filter_nan)
 
         return [(doc_names[d], v) for d,v in cosines]
 
 
 
-def test_DataViewer():
+def test_Viewer():
 
     from inphosemantics.model.tf import TfModel
 
@@ -120,7 +120,7 @@ def test_DataViewer():
     matrix_filename =\
         'test-data/iep/selected/models/iep-selected-tf-word-article.mtx.bz2'
     
-    v = DataViewer(corpus_filename=corpus_filename,
+    v = Viewer(corpus_filename=corpus_filename,
                    model_type=TfModel,
                    matrix_filename=matrix_filename,
                    document_type='articles')
