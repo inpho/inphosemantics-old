@@ -8,7 +8,7 @@ from inphosemantics.model.matrix import load_matrix
 
 
 
-
+# TODO: Move to localmath
 
 # Assumes a row vector
 def norm(v):

@@ -6,7 +6,6 @@ from inphosemantics.model import Model
 from inphosemantics.model.tf import TfModel
 
 
-
 class TfIdfModel(Model):
     
     def train(self,

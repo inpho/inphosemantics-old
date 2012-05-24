@@ -2,6 +2,20 @@ import sys
 import numpy as np
 from math import sqrt
 
+# TODO: Replace uncommented code with commented code. Essentially,
+# these functions need to assume they're receiving rows or columns of
+# a matrix.
+
+# Assumes a row vector
+# def norm(v):
+#     return np.sqrt(np.dot(v,v.T)).flat[0]
+
+# def vector_cos(v,w):
+#     '''
+#     Computes the cosine of the angle between (row) vectors v and w.
+#     '''
+#     return (np.dot(v,w.T) / (norm(v) * norm(w))).flat[0]
+
 
 def norm(v):
     return sqrt(np.dot(v,v))

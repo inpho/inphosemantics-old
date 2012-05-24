@@ -3,8 +3,13 @@ import os
 from nltk.corpus import stopwords as nltk_stopwords
 
 from inphosemantics import *
-from inphosemantics.model.tf import TfModel, TfViewer
-from inphosemantics.model.tfidf import TfIdfModel, TfIdfViewer
+
+from inphosemantics.model.tf import TfModel
+from inphosemantics.viewer.tfviewer import TfViewer
+
+from inphosemantics.model.tfidf import TfIdfModel
+from inphosemantics.viewer.tfidfviewer import TfIdfViewer
+
 from inphosemantics.corpus.tokenizer import IepTokens, SepTokens
 
 root = '/var/inphosemantics/data'
