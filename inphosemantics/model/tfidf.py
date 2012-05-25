@@ -44,32 +44,3 @@ class TfIdfModel(Model):
         
         return results
 
-
-
-
-
-
-
-def test_TfIdfModel():
-
-    from inphosemantics import load_picklez
-
-    corpus_filename =\
-        'test-data/iep/selected/corpus/iep-selected.pickle.bz2'
-    matrix_filename =\
-        'test-data/iep/selected/models/iep-selected-tfidf-word-article.mtx.bz2'
-
-    corpus = load_picklez(corpus_filename)
-
-    model = TfIdfModel(matrix_filename, 'articles')
-
-    model.train(corpus)
-
-    model.dumpz()
-
-    model = TfIdfModel(matrix_filename, 'articles')
-
-    model.load_matrix()
-
-    return corpus, model
-

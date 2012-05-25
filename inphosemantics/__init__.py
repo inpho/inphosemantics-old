@@ -1,5 +1,12 @@
-import bz2
+import os
+import tempfile
+import shutil
 import pickle
+import bz2
+
+from scipy.sparse import lil_matrix
+from scipy.io import mmwrite, mmread
+
 
 def load_picklez(filename):
     """
@@ -19,54 +26,34 @@ def load_picklez(filename):
             return pickle.load(f)
 
 
-# To deprecate
-# from inphosemantics.corpus import Corpus
-# from inphosemantics.model.vectorspacemodel\
-#     import VectorSpaceModel as Model
-
-######################################################################
-# from inphosemantics.model.beagle\
-#     import BeagleEnvironment, BeagleContext, BeagleOrder, BeagleComposite
-# from inphosemantics.model.tf import TermFrequency
-# from inphosemantics.model.tfidf import TfIdf, TfIdfNormal
-# from inphosemantics.model.lsa import Lsa300
 
 
-# model_data =\
-#     {'corpora':
-#          {'sep' :
-#               {'complete':
-#                    {'class': Corpus}},
-#           'iep' :
-#               {'complete':
-#                    {'class': Corpus}}},
-#      'models':
-#          {'beagle':
-#               {'environment':
-#                    {'class': BeagleEnvironment},
-#                'context':
-#                    {'class': BeagleEnvironment},
-#                'order':
-#                    {'class': BeagleOrder},
-#                'composite':
-#                    {'class': BeagleComposite}},
-#           'tf' :
-#               {'default':
-#                    {'class': TermFrequency}},
-#           'tfidf':
-#               {'default':
-#                    {'class': TfIdf},
-#                'normal':
-#                    {'class': TfIdfNormal}},
-#           'lsa':
-#               {'default':
-#                    {'class': Lsa300}}}}
+#TODO: Verify, handle filename extensions: should be either .mtx or .mtx.bz2
+
+def load_matrix(filename):
+
+    return mmread(filename)
+
+
+def dump_matrix(matrix, filename, **kwargs):
+
+    mmwrite(tmp, matrix, **kwargs)
 
 
 
-# def model(corpus, corpus_param, model, model_param):
+def dump_matrixz(matrix, filename, **kwargs):
+
+    tmp_dir = tempfile.mkdtemp()
+    tmp = os.path.join(tmp_dir, 'tmp-file.mtx')
+
+    dump_matrix(matrix, tmp, **kwargs)
     
-#     model_class = model_data['models'][model][model_param]['class']
-    
-#     return model_class(corpus, corpus_param)
-
+    # Need to reopen tmp as mmwrite closed it
+    f = open(tmp, 'r')
+    out = bz2.BZ2File(filename, 'w')
+    try:
+        out.writelines(f)
+    finally:
+        out.close()
+        f.close()            
+        shutil.rmtree(tmp_dir)

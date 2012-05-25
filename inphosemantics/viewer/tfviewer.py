@@ -1,4 +1,5 @@
-from inphosemantics.viewer import Viewer
+from inphosemantics.viewer\
+     import Viewer, similar_terms, similar_documents
 from inphosemantics.model.tf import TfModel
 
 
@@ -33,6 +34,16 @@ class TfViewer(Viewer):
                           stoplist=stoplist)
 
 
+    def similar_terms(self, term, filter_nan=False):
+
+        return similar_terms(self, term, filter_nan)
+
+
+    def similar_documents(self, document, filter_nan=False):
+
+        return similar_documents(self, document, filter_nan)
+
+        
     def cf(self, term):
         pass
 

@@ -1,5 +1,7 @@
 from inphosemantics.model import Model
-from inphosemantics.model.matrix import SparseMatrix
+
+from scipy.sparse import lil_matrix
+
 
 
 class TfModel(Model):
@@ -17,7 +19,7 @@ class TfModel(Model):
         tokens = corpus.view_tokens(token_type)
         shape = (len(corpus.term_types), len(tokens))
 
-        self.matrix = SparseMatrix(shape)
+        self.matrix = lil_matrix(shape)
         
         for j,token in enumerate(tokens):
             for term in token:
@@ -39,7 +41,7 @@ class TfModel(Model):
     
 def test_TfModel():
 
-    from inphosemantics import load_picklez
+    from inphosemantics import load_picklez, dump_matrixz
 
     corpus_filename =\
         'test-data/iep/selected/corpus/iep-selected.pickle.bz2'
@@ -53,7 +55,7 @@ def test_TfModel():
 
     model.train(corpus, 'articles')
 
-    model.dumpz(matrix_filename)
+    dump_matrixz(model, matrix_filename)
 
     model.load_matrix(matrix_filename)
 

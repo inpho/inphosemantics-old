@@ -1,11 +1,9 @@
-from inphosemantics.viewer\
-     import Viewer, similar_terms, similar_documents
-
-from inphosemantics.model.tfidf import TfIdfModel
-
+from inphosemantics.viewer import Viewer
+from inphosemantics.viewer import similar_terms as _similar_terms
+from inphosemantics.model.beagleenvironment import BeagleEnvironment
 
 
-class TfIdfViewer(Viewer):
+class BeagleEnvironmentViewer(Viewer):
 
     def __init__(self,
                  corpus=None,
@@ -17,17 +15,17 @@ class TfIdfViewer(Viewer):
                  stoplist=None):
 
         if matrix or matrix_filename:
-            super(TfIdfViewer, self)\
+            super(BeagleEnvironmentViewer, self)\
                 .__init__(corpus=corpus,
                           corpus_filename=corpus_filename, 
                           model=model,
-                          model_type=TfIdfModel,
+                          model_type=BeagleEnvironment,
                           matrix=matrix,
                           matrix_filename=matrix_filename,
                           document_type=document_type,
                           stoplist=stoplist)
         else:
-            super(TfIdfViewer, self)\
+            super(BeagleEnvironmentViewer, self)\
                 .__init__(corpus=corpus,
                           corpus_filename=corpus_filename, 
                           model=model,
@@ -38,17 +36,21 @@ class TfIdfViewer(Viewer):
 
     def similar_terms(self, term, filter_nan=False):
 
-        return similar_terms(self, term, filter_nan)
+        return _similar_terms(self, term, filter_nan)
 
 
-    def similar_documents(self, document, filter_nan=False):
 
-        return similar_documents(self, document, filter_nan)
+def test_BeagleEnvironmentViewer():
 
+    root = 'test-data/iep/plato/'
 
-    def idf(self, term):
-        pass
+    corpus_filename =\
+        root + 'corpus/iep-plato.pickle.bz2'
 
+    matrix_filename =\
+        root + 'models/iep-plato-beagleenviroment-sentences.mtx.bz2'
 
-    def idfs(self):
-        pass
+    v = BeagleEnvironmentViewer(corpus_filename=corpus_filename,
+                                matrix_filename=matrix_filename)
+
+    return v

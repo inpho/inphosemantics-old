@@ -2,13 +2,12 @@ import time
 from multiprocessing import Pool
 
 import numpy as np
+from scipy.sparse import issparse
 
-from inphosemantics import load_picklez
-from inphosemantics.model.matrix import load_matrix
+from inphosemantics import load_matrix, dump_matrixz
 
 
 
-# TODO: Move to localmath
 
 # Assumes a row vector
 def norm(v):
@@ -18,17 +17,24 @@ def vector_cos(v,w):
     '''
     Computes the cosine of the angle between (row) vectors v and w.
     '''
+    if issparse(v):
+        v = v.todense()
+    if issparse(w):
+        w = w.todense()
+    
     return (np.dot(v,w.T) / (norm(v) * norm(w))).flat[0]
 
 
 
 # Sit out here for multiprocessing
 def row_fn(i):
-    return i, vector_cos(row_fn.v1, row_fn.matrix[i,:].todense())
+    
+    return i, vector_cos(row_fn.v1, row_fn.matrix[i,:])
+
 
 def column_fn(i):
-    return i, vector_cos(column_fn.v1,
-                         column_fn.matrix[:,i].todense().T)
+
+    return i, vector_cos(column_fn.v1, column_fn.matrix[:,i].T)
 
 
 
@@ -44,7 +50,9 @@ class Model(object):
               corpus,
               token_type,
               stoplist=None):
-        pass
+
+        print 'This class should not be used directly. '\
+              'Try a subclass corresponding to a model type.'
 
 
     def load_matrix(self, filename):
@@ -52,9 +60,9 @@ class Model(object):
         self.matrix = load_matrix(filename)
 
 
-    def dumpz(self, filename):
-        
-        self.matrix.dumpz(filename, comment=time.asctime())
+    def dump_matrixz(self, filename):
+
+        matrix_dumpz(self, filename, comment=time.asctime())
 
 
     def filter_rows(self, row_filter):
@@ -71,7 +79,7 @@ class Model(object):
     #TODO: These are almost the same function....
     def similar_rows(self, row, filter_nan=False):
 
-        row_fn.v1 = self.matrix[row,:].todense()
+        row_fn.v1 = self.matrix[row,:]
         row_fn.matrix = self.matrix
 
         p = Pool()
@@ -94,7 +102,7 @@ class Model(object):
 
     def similar_columns(self, column, filter_nan=False):
 
-        column_fn.v1 = self.matrix[:,column].todense().T
+        column_fn.v1 = self.matrix[:,column].T
         column_fn.matrix = self.matrix
 
         p = Pool()

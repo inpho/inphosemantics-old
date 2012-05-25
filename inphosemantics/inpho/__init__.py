@@ -4,13 +4,19 @@ from nltk.corpus import stopwords as nltk_stopwords
 
 from inphosemantics import *
 
+from inphosemantics.corpus.tokenizer import IepTokens, SepTokens
+
 from inphosemantics.model.tf import TfModel
 from inphosemantics.viewer.tfviewer import TfViewer
 
 from inphosemantics.model.tfidf import TfIdfModel
 from inphosemantics.viewer.tfidfviewer import TfIdfViewer
 
-from inphosemantics.corpus.tokenizer import IepTokens, SepTokens
+from inphosemantics.model.beagleenvironment import BeagleEnvironment
+from inphosemantics.viewer.beagleenvironmentviewer import BeagleEnvironmentViewer
+
+from inphosemantics.model.beaglecontext import BeagleContext
+from inphosemantics.viewer.beaglecontextviewer import BeagleContextViewer
 
 root = '/var/inphosemantics/data'
 
@@ -20,8 +26,8 @@ root = '/var/inphosemantics/data'
 
 viewer_dict = dict(tf = TfViewer,
                    tfidf = TfIdfViewer,
-                   # beagle-environment = BeagleEnvironmentViewer,
-                   # beagle-context = BeagleContextViewer,
+                   beagle_environment = BeagleEnvironmentViewer,
+                   beagle_context = BeagleContextViewer,
                    # beagle-order = BeagleOrderViewer,
                    # beagle-composite = BeagleCompositeViewer
                    )
@@ -29,10 +35,10 @@ viewer_dict = dict(tf = TfViewer,
 
 model_dict = dict(tf = TfModel,
                   tfidf = TfIdfModel,
-                  # beagle-environment = BeagleEnvironmentModel,
-                  # beagle-context = BeagleContextModel,
-                  # beagle-order = BeagleOrderModel,
-                  # beagle-composite = BeagleCompositeModel
+                  beagle_environment = BeagleEnvironment,
+                  beagle_context = BeagleContext,
+                  # beagle-order = BeagleOrder,
+                  # beagle-composite = BeagleComposite
                   )
 
 

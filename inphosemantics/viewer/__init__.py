@@ -87,28 +87,31 @@ class Viewer(object):
         return result
 
 
-    def similar_terms(self, term, filter_nan=False):
 
-        i = self.corpus.term_types_str.index(term)
-        
-        cosines = self.model.similar_rows(i, filter_nan=filter_nan)
+def similar_terms(viewer, term, filter_nan=False):
 
-        return [(self.corpus.term_types_str[t], v)
-                for t,v in cosines]
+    i = viewer.corpus.term_types_str.index(term)
+    
+    cosines = viewer.model.similar_rows(i, filter_nan=filter_nan)
+    
+    return [(viewer.corpus.term_types_str[t], v)
+            for t,v in cosines]
 
 
-    def similar_documents(self, document, filter_nan=False):
 
-        doc_names = self.corpus.tokens_meta[self.document_type]
-        doc_names_alist = zip(*doc_names.iteritems())
-        doc_names_rev = dict(zip(doc_names_alist[1], doc_names_alist[0]))
+def similar_documents(viewer, document, filter_nan=False):
+    
+    doc_names = viewer.corpus.tokens_meta[viewer.document_type]
+    doc_names_alist = zip(*doc_names.iteritems())
+    doc_names_rev = dict(zip(doc_names_alist[1], doc_names_alist[0]))
+    
+    i = doc_names_rev[document]
+    
+    cosines = viewer.model.similar_columns(i, filter_nan=filter_nan)
+    
+    return [(doc_names[d], v) for d,v in cosines]
 
-        i = doc_names_rev[document]
-        
-        cosines = self.model.similar_columns(i, filter_nan=filter_nan)
-
-        return [(doc_names[d], v) for d,v in cosines]
-
+    
 
 
 def test_Viewer():

@@ -171,13 +171,16 @@ class SepTokens(object):
             sentence_tokens.append(acc)
 
 
-        while article_tokens[-1] == len(self.word_tokens):
+        while (article_tokens != []
+               and article_tokens[-1] == len(self.word_tokens)):
             article_tokens.pop()
 
-        while paragraph_tokens[-1] == len(self.word_tokens):
+        while (paragraph_tokens != []
+               and paragraph_tokens[-1] == len(self.word_tokens)):
             paragraph_tokens.pop()
 
-        while sentence_tokens[-1] == len(self.word_tokens):
+        while (sentence_tokens != []
+               and sentence_tokens[-1] == len(self.word_tokens)):
             sentence_tokens.pop()
 
 

@@ -3,8 +3,6 @@ import pickle
 
 import numpy as np
 
-from inphosemantics import *
-
 
 
 class BaseCorpus(object):
@@ -47,10 +45,14 @@ class BaseCorpus(object):
         list of lists of strings.
         """
         
-        #TODO: A user might reasonably try to view 'words' or 'terms'.
-        #Handle this.
-        
-        tokens = np.split(self.term_tokens, self.tokens_dict[name])
+        if ((name == 'terms' or name == 'words')
+            and name not in tokens_dict):
+
+            tokens = self.term_tokens
+
+        else:
+            tokens = np.split(self.term_tokens, self.tokens_dict[name])
+
 
         #TODO: Rewrite this so as to return a numpy array (i.e., an object
         #with a datatype)
@@ -89,7 +91,7 @@ class BaseCorpus(object):
             f.close()
 
     
-    def encode(self):
+    def encode_corpus(self):
 
         print 'Getting word types'
         words = self.term_types
@@ -155,7 +157,7 @@ class Corpus(BaseCorpus):
 
         BaseCorpus.__init__(self, term_tokens, tokens_dict=tokens_dict)
         
-        int_corp = self.encode()
+        int_corp = self.encode_corpus()
 
         self.term_tokens = int_corp[0].term_tokens
         # just the list of integers 0, ..., n
@@ -220,7 +222,7 @@ def test_integer_corpus():
 
     c = BaseCorpus(tokens.word_tokens, tokens.tokens_dict)
 
-    int_corpus, decoder = c.encode()
+    int_corpus, decoder = c.encode_corpus()
 
     print 'First article:\n',\
           int_corpus.view_tokens('articles', decoder)[1]
@@ -276,6 +278,21 @@ def test_Corpus_dumpz():
 
     path = 'test-data/iep/selected/corpus/plain'
     filename = 'test-data/iep/selected/corpus/iep-selected.pickle.bz2'
+
+    tokens = IepTokens(path)
+
+    c = Corpus(tokens.word_tokens, tokens.tokens_dict,
+               tokens.tokens_metadata)
+
+    c.dumpz(filename)
+
+
+def test_Corpus_dumpz_plato():
+
+    from inphosemantics.corpus.tokenizer import IepTokens
+
+    path = 'test-data/iep/plato/corpus/plain'
+    filename = 'test-data/iep/plato/corpus/iep-plato.pickle.bz2'
 
     tokens = IepTokens(path)
 
