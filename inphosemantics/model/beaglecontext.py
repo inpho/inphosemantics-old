@@ -4,13 +4,13 @@ import tempfile
 from multiprocessing import Pool
 
 import numpy as np
+from scipy.sparse import lil_matrix
 
-from inphosemantics import load_matrix
+from inphosemantics import load_matrix, dump_matrix
 from inphosemantics.model import Model
 from inphosemantics.model.beagleenvironment import BeagleEnvironment
 
 
-# TODO: This seems much slower than it should be.
 
 def context_fn(ind_sent_list):
 
@@ -31,8 +31,12 @@ def context_fn(ind_sent_list):
             context = np.delete(sent, i)
             for ctxword in context:
                 if ctxword not in stoplist:
-                    mem_matrix[word,:] += env_matrix[ctxword,:]
-                    print mem_matrix
+                    for i in xrange(mem_matrix.shape[1]):
+                        mem_matrix[word,i] += env_matrix[ctxword,i]
+
+                    # It's unclear to me why this passes the first
+                    # test but fails the second:
+                    # mem_matrix[word,:] += env_matrix[ctxword,:]
 
     print 'Chunk of sentences', index, '\n', mem_matrix
                     
@@ -42,9 +46,10 @@ def context_fn(ind_sent_list):
     print 'Dumping to temp file\n'\
           '  ', tmp_file
     
-    mem_matrix.dump(tmp_file)
+    dump_matrix(mem_matrix, tmp_file)
     
     return tmp_file
+
 
 
 class BeagleContext(Model):
@@ -117,7 +122,7 @@ def test_BeagleContext_1():
     import numpy as np
     from inphosemantics.corpus import BaseCorpus
 
-    env_matrix = np.matrix([[2,2],[3,3]])
+    env_matrix = np.array([[2.,2.],[3.,3.]])
 
     c = BaseCorpus([0, 1, 1, 0, 1, 0, 0, 1, 1],
                    {'sentences': [2, 5]})
@@ -165,6 +170,6 @@ def test_BeagleContext_2():
 
     print 'Dumping matrix to\n'\
           '  ', matrix_filename
-    dump_matrixz(m, matrix_filename)
+    m.dump_matrixz(matrix_filename)
     
     return m

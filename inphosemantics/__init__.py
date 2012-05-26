@@ -37,7 +37,7 @@ def load_matrix(filename):
 
 def dump_matrix(matrix, filename, **kwargs):
 
-    mmwrite(tmp, matrix, **kwargs)
+    mmwrite(filename, matrix, **kwargs)
 
 
 

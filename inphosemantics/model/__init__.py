@@ -4,7 +4,8 @@ from multiprocessing import Pool
 import numpy as np
 from scipy.sparse import issparse
 
-from inphosemantics import load_matrix, dump_matrixz
+from inphosemantics import load_matrix
+from inphosemantics import dump_matrixz as _dump_matrixz
 
 
 
@@ -38,6 +39,7 @@ def column_fn(i):
 
 
 
+
 class Model(object):
     """
     """
@@ -59,10 +61,13 @@ class Model(object):
 
         self.matrix = load_matrix(filename)
 
+        if issparse(self.matrix):
+            self.matrix = self.matrix.tolil()
+
 
     def dump_matrixz(self, filename):
 
-        matrix_dumpz(self, filename, comment=time.asctime())
+        _dump_matrixz(self.matrix, filename, comment=time.asctime())
 
 
     def filter_rows(self, row_filter):
@@ -72,7 +77,10 @@ class Model(object):
         #filtered out.
 
         for i in row_filter:
-            self.matrix[i,:] = np.zeros(self.matrix.shape[1])
+            for j in xrange(self.matrix.shape[1]):
+                self.matrix[i,j] = 0
+
+            # self.matrix[i,:] = np.zeros(self.matrix.shape[1])
 
 
 

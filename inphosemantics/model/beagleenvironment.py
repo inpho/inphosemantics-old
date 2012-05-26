@@ -43,6 +43,6 @@ def test_BeagleEnvironment():
 
     print 'Dumping matrix to\n'\
           '  ', matrix_filename
-    matrix_dumpz(m, matrix_filename)
+    m.dump_matrixz(matrix_filename)
     
     return m

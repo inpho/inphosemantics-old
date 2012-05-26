@@ -13,7 +13,7 @@ class TfIdfViewer(Viewer):
                  model=None,
                  matrix=None,
                  matrix_filename=None,
-                 document_type=None,
+                 token_type=None,
                  stoplist=None):
 
         if matrix or matrix_filename:
@@ -24,7 +24,7 @@ class TfIdfViewer(Viewer):
                           model_type=TfIdfModel,
                           matrix=matrix,
                           matrix_filename=matrix_filename,
-                          document_type=document_type,
+                          token_type=token_type,
                           stoplist=stoplist)
         else:
             super(TfIdfViewer, self)\
@@ -32,7 +32,7 @@ class TfIdfViewer(Viewer):
                           corpus_filename=corpus_filename, 
                           model=model,
                           matrix_filename=matrix_filename,
-                          document_type=document_type,
+                          token_type=token_type,
                           stoplist=stoplist)
 
 

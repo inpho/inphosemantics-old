@@ -11,7 +11,7 @@ class TfViewer(Viewer):
                  model=None,
                  matrix=None,
                  matrix_filename=None,
-                 document_type=None,
+                 token_type=None,
                  stoplist=None):
 
         if matrix or matrix_filename:
@@ -22,7 +22,7 @@ class TfViewer(Viewer):
                           model_type=TfModel,
                           matrix=matrix,
                           matrix_filename=matrix_filename,
-                          document_type=document_type,
+                          token_type=token_type,
                           stoplist=stoplist)
         else:
             super(TfViewer, self)\
@@ -30,7 +30,7 @@ class TfViewer(Viewer):
                           corpus_filename=corpus_filename, 
                           model=model,
                           matrix_filename=matrix_filename,
-                          document_type=document_type,
+                          token_type=token_type,
                           stoplist=stoplist)
 
 

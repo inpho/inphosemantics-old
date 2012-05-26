@@ -12,7 +12,7 @@ class Viewer(object):
                  model_type=None,
                  matrix=None,
                  matrix_filename=None,
-                 document_type=None,
+                 token_type=None,
                  stoplist=None):
 
         if corpus:
@@ -65,7 +65,7 @@ class Viewer(object):
             raise Exception("Neither a model, matrix nor "
                             "matrix filename were given.")
 
-        self.document_type = document_type
+        self.token_type = token_type
 
         if stoplist:
             self.stoplist = self._encode_stoplist(stoplist)
@@ -101,7 +101,7 @@ def similar_terms(viewer, term, filter_nan=False):
 
 def similar_documents(viewer, document, filter_nan=False):
     
-    doc_names = viewer.corpus.tokens_meta[viewer.document_type]
+    doc_names = viewer.corpus.tokens_meta[viewer.token_type]
     doc_names_alist = zip(*doc_names.iteritems())
     doc_names_rev = dict(zip(doc_names_alist[1], doc_names_alist[0]))
     
@@ -126,7 +126,7 @@ def test_Viewer():
     v = Viewer(corpus_filename=corpus_filename,
                    model_type=TfModel,
                    matrix_filename=matrix_filename,
-                   document_type='articles')
+                   token_type='articles')
 
     print v
 

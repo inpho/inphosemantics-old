@@ -1,7 +1,5 @@
 import os
 
-from nltk.corpus import stopwords as nltk_stopwords
-
 from inphosemantics import *
 
 from inphosemantics.corpus.tokenizer import IepTokens, SepTokens
@@ -13,48 +11,130 @@ from inphosemantics.model.tfidf import TfIdfModel
 from inphosemantics.viewer.tfidfviewer import TfIdfViewer
 
 from inphosemantics.model.beagleenvironment import BeagleEnvironment
-from inphosemantics.viewer.beagleenvironmentviewer import BeagleEnvironmentViewer
+from inphosemantics.viewer.beagleenvironmentviewer\
+     import BeagleEnvironmentViewer
 
 from inphosemantics.model.beaglecontext import BeagleContext
-from inphosemantics.viewer.beaglecontextviewer import BeagleContextViewer
+from inphosemantics.viewer.beaglecontextviewer\
+     import BeagleContextViewer
+
 
 root = '/var/inphosemantics/data'
 
 
-#TODO: These dictionaries could be consolidated. As well, additional
-#data might be included.
-
-viewer_dict = dict(tf = TfViewer,
-                   tfidf = TfIdfViewer,
-                   beagle_environment = BeagleEnvironmentViewer,
-                   beagle_context = BeagleContextViewer,
-                   # beagle-order = BeagleOrderViewer,
-                   # beagle-composite = BeagleCompositeViewer
-                   )
+stoplist_dict = dict(\
+    nltk='stoplists/stoplist-nltk-english.txt',
+    jones='stoplists/stoplist-jones-beagle.txt',
+    inpho_beagle_supp='stoplists/stoplist-inpho-beagle-supplementary.txt')
 
 
-model_dict = dict(tf = TfModel,
-                  tfidf = TfIdfModel,
-                  beagle_environment = BeagleEnvironment,
-                  beagle_context = BeagleContext,
-                  # beagle-order = BeagleOrder,
-                  # beagle-composite = BeagleComposite
-                  )
+def dump_nltk_stoplist():
 
+    from nltk.corpus import stopwords as nltk_stopwords
+
+    stoplist = nltk_stopwords.words('english')
+
+    filename = os.path.join(root, stoplist_dict['nltk'])
+    with open(filename, 'w') as f:
+        for word in stoplist:
+            print >>f, word
+
+
+def load_stoplist(name):
+
+    filename = os.path.join(root, stoplist_dict[name])
+    
+    with open(filename, 'r') as f:
+        words = f.read().split('\n')
+
+    words = [word for word in words if word]
+
+    return words
+
+
+def merge_stoplists(stoplists):
+
+    merged = []
+    for stoplist in stoplists:
+        merged.extend(stoplist)
+
+    merged = list(set(merged))
+
+    return merged
+
+
+# TODO: Load model_dict from a JSON file
+
+model_dict = dict()
+
+model_dict['tf'] = dict()
+model_dict['tf']['model_type'] = TfModel
+model_dict['tf']['viewer_type'] = TfViewer
+model_dict['tf']['stoplist'] = ['nltk']
+model_dict['tf']['token_type'] = 'articles'
+
+model_dict['tfidf'] = dict()
+model_dict['tfidf']['model_type'] = TfIdfModel
+model_dict['tfidf']['viewer_type'] = TfIdfViewer
+model_dict['tfidf']['stoplist'] = ['nltk']
+model_dict['tfidf']['token_type'] = 'articles'
+
+model_dict['beagleenvironment'] = dict()
+model_dict['beagleenvironment']['model_type'] = BeagleEnvironment
+model_dict['beagleenvironment']['viewer_type'] = BeagleEnvironmentViewer
+model_dict['beagleenvironment']['n_columns'] = 2048
+
+model_dict['beaglecontext'] = dict()
+model_dict['beaglecontext']['model_type'] = BeagleContext
+model_dict['beaglecontext']['viewer_type'] = BeagleContextViewer
+model_dict['beaglecontext']['stoplist'] = ['nltk','jones','inpho_beagle_supp']
+model_dict['beaglecontext']['token_type'] = 'sentences'
+model_dict['beaglecontext']['env_matrix'] = 'beagleenvironment'
+
+
+
+
+            
 
 #TODO: If paths do not exist, create them.
 
 #TODO: Get permission to overwrite data
 
 
-def gen_corpus_filename(corpus,
+
+def _values(d):
+    """
+    Takes a dictionary, sorts the entries by keyword and returns a
+    list of values.
+    """
+    alist = list(d.iteritems())
+
+    alist.sort(key=lambda p: p[0])
+
+    values = zip(*alist)[1]
+
+    return values
+
+
+def get_model_params(name):
+    """
+    Takes a top-level key from model_dict and returns a dictionary of
+    just the model parameters.
+    """
+    params = model_dict[name]
+    del params['model_type']
+    del params['viewer_type']
+    return params
+
+
+def gen_corpus_filename(corpus_name,
                         corpus_param):
 
     corpus_filename =\
-        corpus + '-' + corpus_param + '.pickle.bz2'
+        corpus_name + '-' + corpus_param + '.pickle.bz2'
     corpus_filename =\
         os.path.join(root,
-                     corpus,
+                     corpus_name,
                      corpus_param,
                      'corpus',
                      corpus_filename)
@@ -62,19 +142,26 @@ def gen_corpus_filename(corpus,
     return corpus_filename
 
 
-def gen_matrix_filename(corpus,
+def gen_matrix_filename(corpus_name,
                         corpus_param,
-                        model,
-                        model_param):
+                        model_name,
+                        model_params):
+
+    # Leaving stoplist out of filename
+    if 'stoplist' in model_params:
+        del model_params['stoplist']
+
+    model_params_str =\
+        '-'.join([str(x) for x in _values(model_params)])
 
     matrix_filename =\
-        '-'.join([corpus,
+        '-'.join([corpus_name,
                   corpus_param,
-                  model,
-                  model_param]) + '.mtx.bz2'
+                  model_name,
+                  model_params_str]) + '.mtx.bz2'
     matrix_filename =\
         os.path.join(root,
-                     corpus,
+                     corpus_name,
                      corpus_param,
                      'matrices',
                      matrix_filename)        
@@ -86,95 +173,118 @@ def gen_matrix_filename(corpus,
 class InphoViewer(object):
 
     def __new__(cls,
-                corpus,
+                corpus_name,
                 corpus_param,
-                model,
-                model_param,
-                stoplist=None):
-
-        
-        corpus_filename =\
-            gen_corpus_filename(corpus, corpus_param)
+                model_name,
+                **_model_params):
 
 
-        matrix_filename =\
-            gen_matrix_filename(corpus,
-                                corpus_param,
-                                model,
-                                model_param)
-
-
-        #determine a model type from model                          
+        #determine a viewer type from model                          
         try:
-            viewer_type = viewer_dict[model]
+            viewer_type = model_dict[model_name]['viewer_type']
 
         except KeyError:
             print '*********************************\n'\
                   '* Model type was not recognized *\n'\
                   '*********************************\n\n'\
-                  'Available model types:\n'\
-                  '   ', ', '.join(viewer_dict.keys())
+                  # 'Available model types:\n'\
+                  # '   ', ', '.join(viewer_dict.keys())
             
             raise
-            
-
-        #determine a document type from model_param
-        document_type = model_param.split('-')[0]
 
 
-        #TODO: Robust handling of various stoplists
-        if not stoplist:
-            stoplist = nltk_stopwords.words('english')
+        model_params = get_model_params(model_name)
+        model_params.update(_model_params)
 
 
-        return viewer_type(corpus_filename=corpus_filename,
-                            matrix_filename=matrix_filename,
-                            document_type=document_type,
-                            stoplist=stoplist)
+        viewer_params = dict()
+        
+        viewer_params['corpus_filename'] =\
+            gen_corpus_filename(corpus_name, corpus_param)
+
+
+        viewer_params['matrix_filename'] =\
+            gen_matrix_filename(corpus_name,
+                                corpus_param,
+                                model_name,
+                                model_params)
+
+
+        if 'token_type' in model_params:
+            viewer_params['token_type'] = model_params['token_type']
+
+        if 'stoplist' in model_params:
+
+            stoplist = merge_stoplists(model_params['stoplist'])
+
+            viewer_params['stoplist'] = stoplist
+
+
+        return viewer_type(**viewer_params)
 
 
 
 class InphoTrainer(object):
 
     def __init__(self,
-                 corpus,
+                 corpus_name,
                  corpus_param,
-                 model,
-                 model_param,
-                 stoplist=None):
-
-        self.corpus_filename =\
-            gen_corpus_filename(corpus, corpus_param)
-
-
-        self.matrix_filename =\
-            gen_matrix_filename(corpus,
-                                corpus_param,
-                                model,
-                                model_param)            
-
+                 model_name,
+                 **_model_params):
 
         #determine a model type from model                          
         try:
-            self.model_type = model_dict[model]
+            self.model_type = model_dict[model_name]['model_type']
 
         except KeyError:
             print '*********************************\n'\
                   '* Model type was not recognized *\n'\
                   '*********************************\n\n'\
-                  'Available model types:\n'\
-                  '   ', ', '.join(model_dict.keys())
+                  # 'Available model types:\n'\
+                  # '   ', ', '.join(model_dict.keys())
             
             raise
+
+
+        self.model_params = get_model_params(model_name)
+        self.model_params.update(_model_params)
+
+
+        self.corpus_filename =\
+            gen_corpus_filename(corpus_name, corpus_param)
+
+        self.matrix_filename =\
+            gen_matrix_filename(corpus_name,
+                                corpus_param,
+                                model_name,
+                                self.model_params)            
+
+
+
+        if 'stoplist' in self.model_params:
+
+            stoplist = merge_stoplists(model_params['stoplist'])
+
+            self.model_params['stoplist'] = stoplist
+
+
+
+        for param in self.model_params:
             
+            if param.endswith('matrix'):
 
-        #determine a document type from model_param
-        self.document_type = model_param.split('-')[0]
+                __model_name = self.model_params[param]
+                __model_params = get_model_params(__model_name)
 
+                filename = gen_matrix_filename(corpus_name,
+                                               corpus_param,
+                                               __model_name,
+                                               __model_params)             
 
-        #TODO: Robust handling of various stoplists
-        if not stoplist:
-            self.stoplist = nltk_stopwords.words('english')
+                print 'Loading matrix\n'\
+                      '  ', filename
+
+                self.model_params[param] = load_matrix(filename)
 
 
     def train(self):
@@ -187,11 +297,11 @@ class InphoTrainer(object):
         print 'Training model of type', self.model_type.__name__
         model = self.model_type()
 
-        model.train(corpus, self.document_type, self.stoplist)
+        model.train(corpus, **self.model_params)
 
         print 'Writing matrix to\n'\
               '  ', self.matrix_filename
-        model.dumpz(self.matrix_filename)
+        model.dump_matrixz(self.matrix_filename)
 
 
 
@@ -205,19 +315,19 @@ tokenizer_dict = dict(iep=IepTokens,
 
 class InphoTokenizer(object):
 
-    def __init__(self, corpus, corpus_param):
+    def __init__(self, corpus_name, corpus_param):
 
         self.plain_path =\
             os.path.join(root,
-                         corpus,
+                         corpus_name,
                          corpus_param,
                          'corpus/plain/')
         
         self.corpus_filename =\
-            gen_corpus_filename(corpus, corpus_param)
+            gen_corpus_filename(corpus_name, corpus_param)
 
         try:
-            self.tokenizer_type = tokenizer_dict[corpus]
+            self.tokenizer_type = tokenizer_dict[corpus_name]
 
         except KeyError:
             print '*************************************\n'\
