@@ -1,7 +1,7 @@
 import os
 import shutil
 import tempfile
-from multiprocessing import Pool
+from multiprocessing import Pool, cpu_count
 
 import numpy as np
 from scipy.sparse import lil_matrix
@@ -19,7 +19,6 @@ def context_fn(ind_sent_list):
 
     stoplist = context_fn.stoplist
     env_matrix = context_fn.env_matrix
-    n_columns = context_fn.n_columns
     temp_dir = context_fn.temp_dir
 
     # Very slow for larger matrices in SciPy v. 0.7.2. Same for dok_matrix.
@@ -37,13 +36,12 @@ def context_fn(ind_sent_list):
 
             for ctxword in context:
 
-                # if ctxword not in stoplist:
-                    # It's unclear to me why this passes the first
-                    # test but fails the second when using a lil_matrix:
+                # It's unclear to me why this passes the first
+                # test but fails the second when using a lil_matrix:
                 mem_matrix[word,:] += env_matrix[ctxword,:]
 
-                    # for i in xrange(mem_matrix.shape[1]):
-                    #     mem_matrix[word,i] += env_matrix[ctxword,i]
+                # for i in xrange(mem_matrix.shape[1]):
+                #     mem_matrix[word,i] += env_matrix[ctxword,i]
 
 
     print 'Chunk of sentences', index, '\n', mem_matrix
@@ -67,11 +65,9 @@ class BeagleContext(Model):
               token_type='sentences',
               stoplist=list(),
               n_columns=None,
-              env_matrix=None,
-              n_cores=23):
+              env_matrix=None):
 
         context_fn.stoplist = stoplist
-        context_fn.n_columns = n_columns
 
 
         if env_matrix != None:
@@ -87,7 +83,7 @@ class BeagleContext(Model):
         #For efficiency
         env_matrix = np.float32(env_matrix)
 
-        #Appy stoplist to environment matrix
+        #Apply stoplist to environment matrix
         env_model = BeagleEnvironment(env_matrix)
         env_model.filter_rows(stoplist)
         env_matrix = env_model.matrix
@@ -99,16 +95,18 @@ class BeagleContext(Model):
         temp_dir = tempfile.mkdtemp()
         context_fn.temp_dir = temp_dir
 
-
+        n_cores = cpu_count()
         sentences = corpus.view_tokens(token_type)
+
         m = len(sentences) / n_cores
         sent_lists = [sentences[i*m:(i+1)*m]
                       for i in xrange(n_cores)]
         sent_lists[-1].extend(sentences[m*n_cores:])
-        
+
         ind_sent_lists = list(enumerate(sent_lists))
 
 
+        # Map
         p = Pool()
         results = p.map(context_fn, ind_sent_lists, 1)
         p.close()

@@ -19,6 +19,10 @@ from inphosemantics.model.beaglecontext import BeagleContext
 from inphosemantics.viewer.beaglecontextviewer\
      import BeagleContextViewer
 
+from inphosemantics.model.beagleorder import BeagleOrder
+from inphosemantics.viewer.beagleorderviewer\
+     import BeagleOrderViewer
+
 
 root = '/var/inphosemantics/data'
 
@@ -92,6 +96,12 @@ model_dict['beaglecontext']['viewer_type'] = BeagleContextViewer
 model_dict['beaglecontext']['stoplist'] = ['nltk','jones','inpho_beagle_supp']
 model_dict['beaglecontext']['token_type'] = 'sentences'
 model_dict['beaglecontext']['env_matrix'] = 'beagleenvironment'
+
+model_dict['beagleorder'] = dict()
+model_dict['beagleorder']['model_type'] = BeagleOrder
+model_dict['beagleorder']['viewer_type'] = BeagleOrderViewer
+model_dict['beagleorder']['token_type'] = 'sentences'
+model_dict['beagleorder']['env_matrix'] = 'beagleenvironment'
 
 
 
