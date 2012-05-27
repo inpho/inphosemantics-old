@@ -41,12 +41,12 @@ class TfModel(Model):
     
 def test_TfModel():
 
-    from inphosemantics import load_picklez, dump_matrixz
+    from inphosemantics import load_picklez, dump_matrix
 
     corpus_filename =\
         'test-data/iep/selected/corpus/iep-selected.pickle.bz2'
     matrix_filename =\
-        'test-data/iep/selected/models/iep-selected-tf-word-article.mtx.bz2'
+        'test-data/iep/selected/models/iep-selected-tf-word-article.npy'
     document_type = 'articles'
 
     corpus = load_picklez(corpus_filename)
@@ -55,7 +55,7 @@ def test_TfModel():
 
     model.train(corpus, 'articles')
 
-    dump_matrixz(model, matrix_filename)
+    model.dump_matrix(matrix_filename)
 
     model.load_matrix(matrix_filename)
 

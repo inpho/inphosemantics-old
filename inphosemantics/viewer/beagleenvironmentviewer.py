@@ -48,7 +48,7 @@ def test_BeagleEnvironmentViewer():
         root + 'corpus/iep-plato.pickle.bz2'
 
     matrix_filename =\
-        root + 'models/iep-plato-beagleenviroment-sentences.mtx.bz2'
+        root + 'models/iep-plato-beagleenviroment-sentences.npy'
 
     v = BeagleEnvironmentViewer(corpus_filename=corpus_filename,
                                 matrix_filename=matrix_filename)

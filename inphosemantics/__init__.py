@@ -4,8 +4,10 @@ import shutil
 import pickle
 import bz2
 
-from scipy.sparse import lil_matrix
-from scipy.io import mmwrite, mmread
+import numpy as np
+
+# from scipy.sparse import lil_matrix
+# from scipy.io import mmwrite, mmread
 
 
 def load_picklez(filename):
@@ -30,30 +32,64 @@ def load_picklez(filename):
 
 #TODO: Verify, handle filename extensions: should be either .mtx or .mtx.bz2
 
+# def load_matrix(filename):
+
+#     return mmread(filename)
+
+
+# def dump_matrix(matrix, filename, **kwargs):
+
+#     mmwrite(filename, matrix, **kwargs)
+
+
+
+# def dump_matrixz(matrix, filename, **kwargs):
+
+#     tmp_dir = tempfile.mkdtemp()
+#     tmp = os.path.join(tmp_dir, 'tmp-file.mtx')
+
+#     dump_matrix(matrix, tmp, **kwargs)
+    
+#     # Need to reopen tmp as mmwrite closed it
+#     f = open(tmp, 'r')
+#     out = bz2.BZ2File(filename, 'w')
+#     try:
+#         out.writelines(f)
+#     finally:
+#         out.close()
+#         f.close()            
+#         shutil.rmtree(tmp_dir)
+
+
 def load_matrix(filename):
 
-    return mmread(filename)
+    # The slice [()] is for the cases where np.save has stored a
+    # sparse matrix in a zero-dimensional array
+
+    return np.load(filename)[()]
 
 
-def dump_matrix(matrix, filename, **kwargs):
+def dump_matrix(matrix, filename):
 
-    mmwrite(filename, matrix, **kwargs)
+    np.save(filename, matrix)
 
 
+# def dump_matrixz(matrix, filename):
 
-def dump_matrixz(matrix, filename, **kwargs):
+#     if not filename.endswith('.bz2'):
+#         filename = filename + '.bz2'
 
-    tmp_dir = tempfile.mkdtemp()
-    tmp = os.path.join(tmp_dir, 'tmp-file.mtx')
+#     tmp_dir = tempfile.mkdtemp()
+#     tmp = os.path.join(tmp_dir, 'tmp-file.npy')
 
-    dump_matrix(matrix, tmp, **kwargs)
+#     dump_matrix(matrix, tmp)
     
-    # Need to reopen tmp as mmwrite closed it
-    f = open(tmp, 'r')
-    out = bz2.BZ2File(filename, 'w')
-    try:
-        out.writelines(f)
-    finally:
-        out.close()
-        f.close()            
-        shutil.rmtree(tmp_dir)
+#     # Need to reopen tmp as np.save closed it
+#     f = open(tmp, 'r')
+#     out = bz2.BZ2File(filename, 'w')
+#     try:
+#         out.writelines(f)
+#     finally:
+#         out.close()
+#         f.close()            
+#         shutil.rmtree(tmp_dir)

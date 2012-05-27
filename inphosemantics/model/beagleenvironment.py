@@ -30,7 +30,7 @@ def test_BeagleEnvironment():
         root + 'corpus/iep-plato.pickle.bz2'
 
     matrix_filename =\
-        root + 'models/iep-plato-beagleenviroment-sentences.mtx.bz2'
+        root + 'models/iep-plato-beagleenviroment-sentences.npy'
 
 
     print 'Loading corpus\n'\
@@ -43,6 +43,6 @@ def test_BeagleEnvironment():
 
     print 'Dumping matrix to\n'\
           '  ', matrix_filename
-    m.dump_matrixz(matrix_filename)
+    m.dump_matrix(matrix_filename)
     
     return m

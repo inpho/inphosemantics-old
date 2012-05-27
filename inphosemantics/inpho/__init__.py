@@ -1,4 +1,5 @@
 import os
+from copy import deepcopy
 
 from inphosemantics import *
 
@@ -56,7 +57,7 @@ def merge_stoplists(stoplists):
 
     merged = []
     for stoplist in stoplists:
-        merged.extend(stoplist)
+        merged.extend(load_stoplist(stoplist))
 
     merged = list(set(merged))
 
@@ -78,6 +79,7 @@ model_dict['tfidf']['model_type'] = TfIdfModel
 model_dict['tfidf']['viewer_type'] = TfIdfViewer
 model_dict['tfidf']['stoplist'] = ['nltk']
 model_dict['tfidf']['token_type'] = 'articles'
+model_dict['tfidf']['tf_matrix'] = 'tf'
 
 model_dict['beagleenvironment'] = dict()
 model_dict['beagleenvironment']['model_type'] = BeagleEnvironment
@@ -147,9 +149,19 @@ def gen_matrix_filename(corpus_name,
                         model_name,
                         model_params):
 
-    # Leaving stoplist out of filename
+    # Changes to model_params are only for the sake of generating the
+    # filename
+    model_params = deepcopy(model_params)
+
+    # Omitting stoplist names from filename
     if 'stoplist' in model_params:
         del model_params['stoplist']
+
+    # Omitting input matrices names from filename
+    for param in model_params.keys():
+        if param.endswith('matrix'):
+            del model_params[param]
+
 
     model_params_str =\
         '-'.join([str(x) for x in _values(model_params)])
@@ -158,7 +170,7 @@ def gen_matrix_filename(corpus_name,
         '-'.join([corpus_name,
                   corpus_param,
                   model_name,
-                  model_params_str]) + '.mtx.bz2'
+                  model_params_str]) + '.npy'
     matrix_filename =\
         os.path.join(root,
                      corpus_name,
@@ -213,12 +225,13 @@ class InphoViewer(object):
         if 'token_type' in model_params:
             viewer_params['token_type'] = model_params['token_type']
 
+
         if 'stoplist' in model_params:
 
             stoplist = merge_stoplists(model_params['stoplist'])
 
             viewer_params['stoplist'] = stoplist
-
+            
 
         return viewer_type(**viewer_params)
 
@@ -250,8 +263,16 @@ class InphoTrainer(object):
         self.model_params.update(_model_params)
 
 
-        self.corpus_filename =\
+
+        corpus_filename =\
             gen_corpus_filename(corpus_name, corpus_param)
+
+        print 'Loading corpus from\n'\
+              '  ', corpus_filename
+        
+        self.corpus = load_picklez(corpus_filename)
+
+
 
         self.matrix_filename =\
             gen_matrix_filename(corpus_name,
@@ -263,7 +284,10 @@ class InphoTrainer(object):
 
         if 'stoplist' in self.model_params:
 
-            stoplist = merge_stoplists(model_params['stoplist'])
+            stoplist = merge_stoplists(self.model_params['stoplist'])
+
+            print 'Encoding stoplist'
+            stoplist = self.corpus.encode_tokens_str(stoplist)
 
             self.model_params['stoplist'] = stoplist
 
@@ -289,20 +313,14 @@ class InphoTrainer(object):
 
     def train(self):
 
-        print 'Loading corpus from\n'\
-              '  ', self.corpus_filename
-        corpus = load_picklez(self.corpus_filename)
-
-
         print 'Training model of type', self.model_type.__name__
         model = self.model_type()
 
-        model.train(corpus, **self.model_params)
+        model.train(self.corpus, **self.model_params)
 
         print 'Writing matrix to\n'\
               '  ', self.matrix_filename
-        model.dump_matrixz(self.matrix_filename)
-
+        model.dump_matrix(self.matrix_filename)
 
 
 

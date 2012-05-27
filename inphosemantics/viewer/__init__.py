@@ -68,23 +68,10 @@ class Viewer(object):
         self.token_type = token_type
 
         if stoplist:
-            self.stoplist = self._encode_stoplist(stoplist)
+            self.stoplist = self.corpus.encode_tokens_str(stoplist)
             print 'Applying stoplist to matrix'
             self.model.filter_rows(self.stoplist)
 
-
-    def _encode_stoplist(self, stoplist):
-
-        keys = self.corpus.term_types_str
-        values = xrange(len(keys))
-        mapping = dict(zip(keys, values))
-
-        result = self.corpus.decode(stoplist, mapping)
-
-        # Make mapping a total function
-        result = [i for i in result if np.isfinite(i)]
-
-        return result
 
 
 
@@ -121,7 +108,7 @@ def test_Viewer():
     corpus_filename =\
         'test-data/iep/selected/corpus/iep-selected.pickle.bz2'
     matrix_filename =\
-        'test-data/iep/selected/models/iep-selected-tf-word-article.mtx.bz2'
+        'test-data/iep/selected/models/iep-selected-tf-word-article.npy'
     
     v = Viewer(corpus_filename=corpus_filename,
                    model_type=TfModel,

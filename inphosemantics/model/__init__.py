@@ -5,7 +5,7 @@ import numpy as np
 from scipy.sparse import issparse
 
 from inphosemantics import load_matrix
-from inphosemantics import dump_matrixz as _dump_matrixz
+from inphosemantics import dump_matrix as _dump_matrix
 
 
 
@@ -61,13 +61,10 @@ class Model(object):
 
         self.matrix = load_matrix(filename)
 
-        if issparse(self.matrix):
-            self.matrix = self.matrix.tolil()
 
+    def dump_matrix(self, filename):
 
-    def dump_matrixz(self, filename):
-
-        _dump_matrixz(self.matrix, filename, comment=time.asctime())
+        _dump_matrix(self.matrix, filename)
 
 
     def filter_rows(self, row_filter):

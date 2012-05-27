@@ -1,3 +1,4 @@
 *.pyc
 *.egg-info/
 *.bz2
+*.npy

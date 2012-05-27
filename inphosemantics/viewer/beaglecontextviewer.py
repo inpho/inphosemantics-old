@@ -48,7 +48,7 @@ def test_BeagleContextViewer():
         root + 'corpus/iep-plato.pickle.bz2'
 
     matrix_filename =\
-        root + 'models/iep-plato-beaglecontext-sentences.mtx.bz2'
+        root + 'models/iep-plato-beaglecontext-sentences.npy'
 
     v = BeagleContextViewer(corpus_filename=corpus_filename,
                             matrix_filename=matrix_filename)

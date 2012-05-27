@@ -22,26 +22,34 @@ def context_fn(ind_sent_list):
     n_columns = context_fn.n_columns
     temp_dir = context_fn.temp_dir
 
-    mem_matrix = lil_matrix(env_matrix.shape)
+    # Very slow for larger matrices in SciPy v. 0.7.2. Same for dok_matrix.
+    # mem_matrix = lil_matrix(env_matrix.shape)
+
+    mem_matrix = np.zeros(env_matrix.shape, dtype=np.float32)
 
     print 'Training on chunk of sentences', index
 
     for sent in sent_list:
-        for i,word in enumerate(sent):
-            context = np.delete(sent, i)
-            for ctxword in context:
-                if ctxword not in stoplist:
-                    for i in xrange(mem_matrix.shape[1]):
-                        mem_matrix[word,i] += env_matrix[ctxword,i]
 
+        for i,word in enumerate(sent):
+
+            context = np.delete(sent, i)
+
+            for ctxword in context:
+
+                # if ctxword not in stoplist:
                     # It's unclear to me why this passes the first
-                    # test but fails the second:
-                    # mem_matrix[word,:] += env_matrix[ctxword,:]
+                    # test but fails the second when using a lil_matrix:
+                mem_matrix[word,:] += env_matrix[ctxword,:]
+
+                    # for i in xrange(mem_matrix.shape[1]):
+                    #     mem_matrix[word,i] += env_matrix[ctxword,i]
+
 
     print 'Chunk of sentences', index, '\n', mem_matrix
                     
     tmp_file =\
-        os.path.join(temp_dir, 'context-' + str(index) + '.tmp')
+        os.path.join(temp_dir, 'context-' + str(index) + '.tmp.npy')
 
     print 'Dumping to temp file\n'\
           '  ', tmp_file
@@ -60,7 +68,7 @@ class BeagleContext(Model):
               stoplist=list(),
               n_columns=None,
               env_matrix=None,
-              n_cores=20):
+              n_cores=23):
 
         context_fn.stoplist = stoplist
         context_fn.n_columns = n_columns
@@ -76,7 +84,17 @@ class BeagleContext(Model):
                             n_columns)
             env_matrix = env_model.matrix
 
+        #For efficiency
+        env_matrix = np.float32(env_matrix)
+
+        #Appy stoplist to environment matrix
+        env_model = BeagleEnvironment(env_matrix)
+        env_model.filter_rows(stoplist)
+        env_matrix = env_model.matrix
+
         context_fn.env_matrix = env_matrix
+
+
         
         temp_dir = tempfile.mkdtemp()
         context_fn.temp_dir = temp_dir
@@ -86,7 +104,7 @@ class BeagleContext(Model):
         m = len(sentences) / n_cores
         sent_lists = [sentences[i*m:(i+1)*m]
                       for i in xrange(n_cores)]
-        sent_lists.append(sentences[m*n_cores:])
+        sent_lists[-1].extend(sentences[m*n_cores:])
         
         ind_sent_lists = list(enumerate(sent_lists))
 
@@ -97,7 +115,7 @@ class BeagleContext(Model):
 
 
         # Reduce
-        self.matrix = np.zeros(env_matrix.shape)
+        self.matrix = np.zeros(env_matrix.shape, dtype=np.float32)
         
         for result in results:
 
@@ -105,8 +123,6 @@ class BeagleContext(Model):
 
             summand = load_matrix(result)
             self.matrix += summand
-
-
 
 
         # Clean up
@@ -137,7 +153,7 @@ def test_BeagleContext_1():
 
 def test_BeagleContext_2():
 
-    from inphosemantics import load_picklez, dump_matrixz
+    from inphosemantics import load_picklez, dump_matrix
 
     root = 'test-data/iep/plato/'
 
@@ -145,10 +161,10 @@ def test_BeagleContext_2():
         root + 'corpus/iep-plato.pickle.bz2'
 
     env_filename =\
-        root + 'models/iep-plato-beagleenviroment-sentences.mtx.bz2'
+        root + 'models/iep-plato-beagleenviroment-sentences.npy'
 
     matrix_filename =\
-        root + 'models/iep-plato-beaglecontext-sentences.mtx.bz2'
+        root + 'models/iep-plato-beaglecontext-sentences.npy'
 
 
     print 'Loading corpus\n'\
@@ -170,6 +186,6 @@ def test_BeagleContext_2():
 
     print 'Dumping matrix to\n'\
           '  ', matrix_filename
-    m.dump_matrixz(matrix_filename)
+    m.dump_matrix(matrix_filename)
     
     return m

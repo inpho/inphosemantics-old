@@ -180,6 +180,20 @@ class Corpus(BaseCorpus):
         return self.tokens_meta[name]
 
 
+    def encode_tokens_str(self, tokens_str):
+
+        keys = self.term_types_str
+        values = xrange(len(keys))
+        mapping = dict(zip(keys, values))
+
+        result = self.decode(tokens_str, mapping)
+
+        # Make mapping a total function
+        result = [i for i in result if np.isfinite(i)]
+
+        return result
+
+
 
 ############################
 ####      TEST DATA    #####
