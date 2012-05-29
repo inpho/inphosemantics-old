@@ -17,12 +17,15 @@ class BeagleEnvironment(Model):
         self.matrix *= 2
         self.matrix -= 1
         
-        
+        norm = np.sum(self.matrix**2, axis=1)**(1./2)
+
+        self.matrix /= norm[:, np.newaxis]
+
 
 
 def test_BeagleEnvironment():
 
-    from inphosemantics import load_picklez, dump_matrixz
+    from inphosemantics import load_picklez, dump_matrix
 
     root = 'test-data/iep/plato/'
 
@@ -40,6 +43,8 @@ def test_BeagleEnvironment():
     print 'Training model'
     m = BeagleEnvironment()
     m.train(c, n_columns=256)
+
+    print 'Row norms', np.sum(m.matrix**2, axis=1)**(1./2)
 
     print 'Dumping matrix to\n'\
           '  ', matrix_filename

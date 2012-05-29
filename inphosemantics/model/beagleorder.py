@@ -4,6 +4,7 @@ import tempfile
 from multiprocessing import Pool, cpu_count
 
 import numpy as np
+from scipy.misc import factorial
 from numpy.dual import fft, ifft
 
 from inphosemantics import load_matrix, dump_matrix
@@ -17,15 +18,32 @@ class RandomPermutations(object):
 
     def __init__(self, dimension, n, seed=None):
 
+        if n > factorial(dimension):
+
+            raise Exception('Maximum number of distinct permutations exceeded.')
+        
         np.random.seed(seed)
         
         self.permutations = dict()
 
+        _permutations = []
+
         for i in xrange(n):
-            
-            idx_array = np.random.permutation(dimension)
-            
-            self.permutations[i] = self.mk_permutation(idx_array)
+
+            while True:
+
+                idx_array = np.random.permutation(dimension)
+
+                _idx_array = list(idx_array)
+
+                if _idx_array not in _permutations:
+
+                    _permutations.append(_idx_array)
+                    
+                    self.permutations[i] = self.mk_permutation(idx_array)
+
+                    break
+        
 
 
     @staticmethod
@@ -144,8 +162,16 @@ class BeagleOrder(Model):
 
 
         if not placeholder:
-            order_fn.placeholder =\
-                np.float32(np.random.random(env_matrix.shape[1]))
+
+            placeholder = np.random.random(env_matrix.shape[1])
+            placeholder *= 2
+            placeholder -= 1
+            placeholder /= np.sum(placeholder**2)**(1./2)
+            order_fn.placeholder = placeholder
+                
+        print 'Placeholder:', order_fn.placeholder
+        print 'Norm of placeholder', np.sum(order_fn.placeholder**2)**(1./2)
+
 
 
         if not right_permutation or not left_permutation:
@@ -161,7 +187,9 @@ class BeagleOrder(Model):
         else:
             order_fn.left_permutation = permutations.permutations[1]
 
+        print 'Right permutation', order_fn.right_permutation(np.arange(env_matrix.shape[1]))
 
+        print 'Left permutation', order_fn.left_permutation(np.arange(env_matrix.shape[1]))
 
 
 

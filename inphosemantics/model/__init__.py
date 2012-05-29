@@ -10,9 +10,9 @@ from inphosemantics import dump_matrix as _dump_matrix
 
 
 
-# Assumes a row vector
 def norm(v):
-    return np.sqrt(np.dot(v,v.T)).flat[0]
+    return np.sum(v**2)**(1./2)
+
 
 def vector_cos(v,w):
     '''
@@ -23,7 +23,7 @@ def vector_cos(v,w):
     if issparse(w):
         w = w.todense()
     
-    return (np.dot(v,w.T) / (norm(v) * norm(w))).flat[0]
+    return np.sum(v*w) / (norm(v) * norm(w))
 
 
 
