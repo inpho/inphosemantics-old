@@ -70,9 +70,7 @@ class BeagleContext(Model):
         context_fn.stoplist = stoplist
 
 
-        if env_matrix != None:
-            n_columns = env_matrix.shape[1]
-        else:
+        if env_matrix == None:
             env_model = BeagleEnvironment()
             env_model.train(corpus,
                             token_type,
@@ -80,8 +78,6 @@ class BeagleContext(Model):
                             n_columns)
             env_matrix = env_model.matrix
 
-        #For efficiency
-        env_matrix = np.float32(env_matrix)
 
         #Apply stoplist to environment matrix
         env_model = BeagleEnvironment(env_matrix)

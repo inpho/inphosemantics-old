@@ -45,7 +45,6 @@ class RandomPermutations(object):
                     break
         
 
-
     @staticmethod
     def mk_permutation(idx_array):
         
@@ -148,8 +147,6 @@ class BeagleOrder(Model):
                             n_columns)
             env_matrix = env_model.matrix
 
-        #For efficiency
-        env_matrix = np.float32(env_matrix)
 
         order_fn.env_matrix = env_matrix
 

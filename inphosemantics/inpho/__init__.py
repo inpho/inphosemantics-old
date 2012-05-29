@@ -23,6 +23,10 @@ from inphosemantics.model.beagleorder import BeagleOrder
 from inphosemantics.viewer.beagleorderviewer\
      import BeagleOrderViewer
 
+from inphosemantics.model.beaglecomposite import BeagleComposite
+from inphosemantics.viewer.beaglecompositeviewer\
+     import BeagleCompositeViewer
+
 
 root = '/var/inphosemantics/data'
 
@@ -100,8 +104,17 @@ model_dict['beaglecontext']['env_matrix'] = 'beagleenvironment'
 model_dict['beagleorder'] = dict()
 model_dict['beagleorder']['model_type'] = BeagleOrder
 model_dict['beagleorder']['viewer_type'] = BeagleOrderViewer
+model_dict['beagleorder']['stoplist'] = ['nltk','jones','inpho_beagle_supp']
 model_dict['beagleorder']['token_type'] = 'sentences'
 model_dict['beagleorder']['env_matrix'] = 'beagleenvironment'
+
+model_dict['beaglecomposite'] = dict()
+model_dict['beaglecomposite']['model_type'] = BeagleComposite
+model_dict['beaglecomposite']['viewer_type'] = BeagleCompositeViewer
+model_dict['beaglecomposite']['stoplist'] = ['nltk','jones','inpho_beagle_supp']
+model_dict['beaglecomposite']['token_type'] = 'sentences'
+model_dict['beaglecomposite']['ctx_matrix'] = 'beaglecontext'
+model_dict['beaglecomposite']['ord_matrix'] = 'beagleorder'
 
 
 
@@ -201,19 +214,7 @@ class InphoViewer(object):
                 **_model_params):
 
 
-        #determine a viewer type from model                          
-        try:
-            viewer_type = model_dict[model_name]['viewer_type']
-
-        except KeyError:
-            print '*********************************\n'\
-                  '* Model type was not recognized *\n'\
-                  '*********************************\n\n'\
-                  # 'Available model types:\n'\
-                  # '   ', ', '.join(viewer_dict.keys())
-            
-            raise
-
+        viewer_type = model_dict[model_name]['viewer_type']
 
         model_params = get_model_params(model_name)
         model_params.update(_model_params)
@@ -255,18 +256,8 @@ class InphoTrainer(object):
                  model_name,
                  **_model_params):
 
-        #determine a model type from model                          
-        try:
-            self.model_type = model_dict[model_name]['model_type']
 
-        except KeyError:
-            print '*********************************\n'\
-                  '* Model type was not recognized *\n'\
-                  '*********************************\n\n'\
-                  # 'Available model types:\n'\
-                  # '   ', ', '.join(model_dict.keys())
-            
-            raise
+        self.model_type = model_dict[model_name]['model_type']
 
 
         self.model_params = get_model_params(model_name)

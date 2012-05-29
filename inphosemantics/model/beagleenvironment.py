@@ -13,7 +13,7 @@ class BeagleEnvironment(Model):
 
         shape = (len(corpus.term_types), n_columns)
 
-        self.matrix = np.random.random(shape)
+        self.matrix = np.float32(np.random.random(shape))
         self.matrix *= 2
         self.matrix -= 1
         
