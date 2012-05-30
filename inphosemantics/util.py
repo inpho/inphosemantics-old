@@ -1,5 +1,5 @@
 
-def gen_nwb(matrix, labels):
+def gen_nwb(matrix, labels, filename=None):
 
     out = ''
 
@@ -18,13 +18,17 @@ def gen_nwb(matrix, labels):
             out += '{0} {1} {2}\n'.format(i+1, j+1, matrix[i,j])
 
 
+    if filename:
+        with open(filename, 'w') as f:
+            f.write(out)
+
     return out
 
 
 
 
 
-def gen_word2word(matrix, labels):
+def gen_word2word(matrix, labels, filename=None):
 
     out = ''
 
@@ -38,5 +42,9 @@ def gen_word2word(matrix, labels):
         
         out += labels[i] + ', ' + ', '.join(values) + '\n'
 
+
+    if filename:
+        with open(filename, 'w') as f:
+            f.write(out)
 
     return out
