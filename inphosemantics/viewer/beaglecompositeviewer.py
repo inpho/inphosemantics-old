@@ -1,9 +1,8 @@
-from inphosemantics.viewer import Viewer
-from inphosemantics.viewer import similar_terms as _similar_terms
-from inphosemantics.model.beaglecomposite import BeagleComposite
+import inphosemantics.viewer as vw
+import inphosemantics.model.beaglecomposite as bc
 
 
-class BeagleCompositeViewer(Viewer):
+class BeagleCompositeViewer(vw.Viewer):
 
     def __init__(self,
                  corpus=None,
@@ -19,7 +18,7 @@ class BeagleCompositeViewer(Viewer):
                 .__init__(corpus=corpus,
                           corpus_filename=corpus_filename, 
                           model=model,
-                          model_type=BeagleComposite,
+                          model_type=bc.BeagleComposite,
                           matrix=matrix,
                           matrix_filename=matrix_filename,
                           token_type=token_type,
@@ -36,7 +35,12 @@ class BeagleCompositeViewer(Viewer):
 
     def similar_terms(self, term, filter_nan=False):
 
-        return _similar_terms(self, term, filter_nan)
+        return vw.similar_terms(self, term, filter_nan)
+
+
+    def simmat_terms(self, term_list):
+
+        return vw.simmat_terms(self, term_list)
 
 
 

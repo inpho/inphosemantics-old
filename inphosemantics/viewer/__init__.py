@@ -3,11 +3,14 @@ import numpy as np
 from inphosemantics import load_picklez
 
 
+#TODO: Add term_types parameter and instantiate an empty corpus object
+#with it. This will speed up many viewing tasks.
+
 class Viewer(object):
 
     def __init__(self,
                  corpus=None,
-                 corpus_filename=None, 
+                 corpus_filename=None,
                  model=None,
                  model_type=None,
                  matrix=None,
@@ -75,6 +78,38 @@ class Viewer(object):
 
 
 
+def simmat_terms(viewer, term_list):
+
+    terms = viewer.corpus.term_types_str
+
+    terms_rev = dict(zip(terms, xrange(len(terms))))
+
+    indices = [terms_rev[term] for term in term_list]
+
+    simmat = viewer.model.simmat_rows(indices)
+
+    simmat.indices = term_list
+
+    return simmat
+
+
+
+def simmat_documents(viewer, document_list):
+
+    doc_names = viewer.corpus.tokens_meta[viewer.token_type]
+
+    doc_names_rev = dict((k,v) for k,v in doc_names.iteritems())
+
+    indices = [doc_names_rev[doc] for doc in document_list]
+    
+    simmat = viewer.model.simmat_columns(indices)
+
+    simmat.indices = document_list
+
+    return simmat
+
+
+
 def similar_terms(viewer, term, filter_nan=False):
 
     i = viewer.corpus.term_types_str.index(term)
@@ -89,8 +124,7 @@ def similar_terms(viewer, term, filter_nan=False):
 def similar_documents(viewer, document, filter_nan=False):
     
     doc_names = viewer.corpus.tokens_meta[viewer.token_type]
-    doc_names_alist = zip(*doc_names.iteritems())
-    doc_names_rev = dict(zip(doc_names_alist[1], doc_names_alist[0]))
+    doc_names_rev = dict((k,v) for k,v in doc_names.iteritems())
     
     i = doc_names_rev[document]
     

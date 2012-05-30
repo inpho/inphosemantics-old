@@ -1,9 +1,8 @@
-from inphosemantics.viewer import Viewer
-from inphosemantics.viewer import similar_terms as _similar_terms
-from inphosemantics.model.beaglecontext import BeagleContext
+import inphosemantics.viewer as vw
+import inphosemantics.model.beaglecontext as bc
 
 
-class BeagleContextViewer(Viewer):
+class BeagleContextViewer(vw.Viewer):
 
     def __init__(self,
                  corpus=None,
@@ -19,7 +18,7 @@ class BeagleContextViewer(Viewer):
                 .__init__(corpus=corpus,
                           corpus_filename=corpus_filename, 
                           model=model,
-                          model_type=BeagleContext,
+                          model_type=bc.BeagleContext,
                           matrix=matrix,
                           matrix_filename=matrix_filename,
                           token_type=token_type,
@@ -36,8 +35,12 @@ class BeagleContextViewer(Viewer):
 
     def similar_terms(self, term, filter_nan=False):
 
-        return _similar_terms(self, term, filter_nan)
+        return vw.similar_terms(self, term, filter_nan)
 
+
+    def simmat_terms(self, term_list):
+
+        return vw.simmat_terms(self, term_list)
 
 
 def test_BeagleContextViewer():

@@ -6,6 +6,8 @@ from inphosemantics.model import Model
 from inphosemantics.model.tf import TfModel
 
 
+# TODO: Write a parallel algorithm for this (too slow)
+
 class TfIdfModel(Model):
     
     def train(self,
@@ -25,6 +27,7 @@ class TfIdfModel(Model):
 
         for i in xrange(self.matrix.shape[0]):
             self.matrix[i,:] *= self.idf(i)
+
 
     def idf(self, term):
 

@@ -4,6 +4,7 @@ import pickle
 import numpy as np
 
 
+#TODO: Add a method to dump the term types.
 
 class BaseCorpus(object):
     """
