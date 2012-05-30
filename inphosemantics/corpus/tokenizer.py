@@ -3,10 +3,7 @@ import re
 import pickle
 import codecs
 
-from nltk import TreebankWordTokenizer
-import nltk.data
-
-
+import nltk
 
 
 
@@ -26,7 +23,7 @@ def word_tokenize(text):
     """
 
     text = rehyph(text)
-    text = TreebankWordTokenizer().tokenize(text)
+    text = nltk.TreebankWordTokenizer().tokenize(text)
     tokens = [word.lower() for word in text]
     tokens = strip_punc(tokens)
     tokens = rem_num(tokens)
@@ -80,9 +77,13 @@ def textfile_tokenize(path):
         
         filename = os.path.join(path, filename)
 
-        with codecs.open(filename, encoding='utf-8', mode='r') as f:
+        with open(filename, mode='r') as f:
             out[0].append(f.read())
             out[1][len(out[0]) - 1] = filename
+
+        # with codecs.open(filename, encoding='utf-8', mode='r') as f:
+        #     out[0].append(f.read())
+        #     out[1][len(out[0]) - 1] = filename
 
     return out
 
@@ -118,7 +119,7 @@ def rehyph(sent):
 #                 Corpus-specific tokenizing classes
 ######################################################################
 
-class SepTokens(object):
+class ArticlesTokenizer(object):
 
     def __init__(self, path):
 
@@ -207,7 +208,10 @@ class SepTokens(object):
         return d
 
 
-class IepTokens(SepTokens):
+class IepTokens(ArticlesTokenizer):
+    pass
+
+class SepTokens(ArticlesTokenizer):
     pass
 
 
@@ -275,7 +279,7 @@ def test_IepTokens():
 #         CorpusBase.__init__(self, corpus, corpus_param)
             
 #         self.stok = nltk.data.load('tokenizers/punkt/english.pickle')
-#         self.wtok = TreebankWordTokenizer()
+#         self.wtok = nltk.TreebankWordTokenizer()
 
 
 #     def tok_corpus(self):
