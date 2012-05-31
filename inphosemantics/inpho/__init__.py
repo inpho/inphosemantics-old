@@ -1,5 +1,5 @@
 import os
-from copy import deepcopy
+import copy
 
 from inphosemantics import *
 
@@ -146,7 +146,7 @@ def get_model_params(name):
     Takes a top-level key from model_dict and returns a dictionary of
     just the model parameters.
     """
-    params = model_dict[name]
+    params = copy.deepcopy(model_dict[name])
     del params['model_type']
     del params['viewer_type']
     return params
@@ -181,13 +181,13 @@ def gen_matrix_filename(corpus_name,
 
     # Changes to model_params are only for the sake of generating the
     # filename
-    model_params = deepcopy(model_params)
+    model_params = copy.deepcopy(model_params)
 
     # Omitting stoplist names from filename
     if 'stoplist' in model_params:
         del model_params['stoplist']
 
-    # Omitting input matrices names from filename
+    # Omitting input matrix names from filename
     for param in model_params.keys():
         if param.endswith('matrix'):
             del model_params[param]
