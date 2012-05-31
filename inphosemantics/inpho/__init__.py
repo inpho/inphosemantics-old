@@ -1,7 +1,14 @@
 import os
 import copy
 
+
+# TODO: This import situation is out of control. Set __all__
+# parameters in the submodules and use from <package> import <module>
+# pattern.
+
 from inphosemantics import *
+
+from inphosemantics.corpus import Corpus
 
 from inphosemantics.corpus.tokenizer import ArticlesTokenizer
 
@@ -389,15 +396,17 @@ class InphoTokenizer(object):
         if not self.tokens:
             self.tokenize()
 
-        else:
-            corpus = Corpus(self.tokens.word_tokens,
-                                 self.tokens.tokens_dict,
-                                 self.tokens.tokens_metadata)
+        corpus = Corpus(self.tokens.word_tokens,
+                        self.tokens.tokens_dict,
+                        self.tokens.tokens_metadata)
 
-            print 'Writing corpus to'\
-                  '  ', self.corpus_filename
+        print 'Writing corpus to\n'\
+              '  ', self.corpus_filename
 
-            print 'Writing term types to'\
-                  '  ', self.term_types_filename
+        corpus.dumpz(self.corpus_filename)
 
-            corpus.dumpz(self.corpus_filename)
+        print 'Writing term types to\n'\
+              '  ', self.term_types_filename
+
+        corpus.dumpz(self.term_types_filename,
+                     term_types_only=True)

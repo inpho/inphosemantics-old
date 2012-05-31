@@ -212,7 +212,7 @@ class Corpus(BaseCorpus):
 
         if term_types_only:
 
-            gen_lexicon().dump(filename)
+            self.gen_lexicon().dump(filename)
 
         else:
             super(Corpus, self).dump(filename)
@@ -222,7 +222,7 @@ class Corpus(BaseCorpus):
 
         if term_types_only:
 
-            gen_lexicon().dumpz(filename)
+            self.gen_lexicon().dumpz(filename)
 
         else:
             super(Corpus, self).dumpz(filename)

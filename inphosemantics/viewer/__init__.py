@@ -35,6 +35,7 @@ class Viewer(object):
                             "corpus filename were given.")
             
 
+
         if model:
             if matrix:
                 raise Exception("Both a model and a "
