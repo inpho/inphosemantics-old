@@ -153,10 +153,17 @@ def get_model_params(name):
 
 
 def gen_corpus_filename(corpus_name,
-                        corpus_param):
+                        corpus_param,
+                        term_types_only=False):
 
-    corpus_filename =\
-        corpus_name + '-' + corpus_param + '.pickle.bz2'
+    if term_types_only:
+        corpus_filename =\
+            corpus_name + '-' + corpus_param + '-term-types.pickle.bz2'
+
+    else:
+        corpus_filename =\
+            corpus_name + '-' + corpus_param + '.pickle.bz2'
+
     corpus_filename =\
         os.path.join(root,
                      corpus_name,
@@ -211,6 +218,7 @@ class InphoViewer(object):
                 corpus_name,
                 corpus_param,
                 model_name,
+                term_types_only=False,
                 **_model_params):
 
 
@@ -223,7 +231,9 @@ class InphoViewer(object):
         viewer_params = dict()
         
         viewer_params['corpus_filename'] =\
-            gen_corpus_filename(corpus_name, corpus_param)
+            gen_corpus_filename(corpus_name,
+                                corpus_param,
+                                term_types_only=term_types_only)
 
 
         viewer_params['matrix_filename'] =\
@@ -254,14 +264,14 @@ class InphoTrainer(object):
                  corpus_name,
                  corpus_param,
                  model_name,
-                 **_model_params):
+                 **model_params):
 
 
         self.model_type = model_dict[model_name]['model_type']
 
 
         self.model_params = get_model_params(model_name)
-        self.model_params.update(_model_params)
+        self.model_params.update(model_params)
 
 
 
@@ -298,13 +308,13 @@ class InphoTrainer(object):
             
             if param.endswith('matrix'):
 
-                __model_name = self.model_params[param]
-                __model_params = get_model_params(__model_name)
+                model_name = self.model_params[param]
+                model_params = get_model_params(model_name)
 
                 filename = gen_matrix_filename(corpus_name,
                                                corpus_param,
-                                               __model_name,
-                                               __model_params)             
+                                               model_name,
+                                               model_params)             
 
                 print 'Loading matrix\n'\
                       '  ', filename
@@ -326,8 +336,10 @@ class InphoTrainer(object):
 
 
 
-tokenizer_dict = dict(iep=IepTokens,
-                      sep=SepTokens)
+tokenizer_dict = dict(iep=ArticlesTokenizer,
+                      sep=ArticlesTokenizer,
+                      malaria=ArticlesTokenizer,
+                      philpapers=ArticlesTokenizer)
 
 
 
@@ -344,6 +356,12 @@ class InphoTokenizer(object):
         
         self.corpus_filename =\
             gen_corpus_filename(corpus_name, corpus_param)
+
+        self.term_types_filename =\
+            gen_corpus_filename(corpus_name,
+                                corpus_param,
+                                term_types_only=True)
+
 
         try:
             self.tokenizer_type = tokenizer_dict[corpus_name]
@@ -366,17 +384,20 @@ class InphoTokenizer(object):
         self.tokens = self.tokenizer_type(self.plain_path)
 
 
-    def generate_corpus(self):
+    def gen_corpus(self):
 
         if not self.tokens:
             self.tokenize()
 
         else:
             corpus = Corpus(self.tokens.word_tokens,
-                            self.tokens.tokens_dict,
-                            self.tokens.tokens_metadata)
+                                 self.tokens.tokens_dict,
+                                 self.tokens.tokens_metadata)
 
             print 'Writing corpus to'\
                   '  ', self.corpus_filename
-            
+
+            print 'Writing term types to'\
+                  '  ', self.term_types_filename
+
             corpus.dumpz(self.corpus_filename)

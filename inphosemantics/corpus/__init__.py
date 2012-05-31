@@ -156,7 +156,7 @@ class Corpus(BaseCorpus):
     
     def __init__(self, term_tokens, tokens_dict=None, tokens_meta=None):
 
-        BaseCorpus.__init__(self, term_tokens, tokens_dict=tokens_dict)
+        super(Corpus, self).__init__(term_tokens, tokens_dict=tokens_dict)
         
         int_corp = self.encode_corpus()
 
@@ -171,9 +171,10 @@ class Corpus(BaseCorpus):
     def view_tokens(self, name, strings=False):
 
         if strings:
-            return BaseCorpus.view_tokens(self, name, self.term_types_str)
+            return super(Corpus, self).view_tokens(name,\
+                                        decoder=self.term_types_str)
 
-        return BaseCorpus.view_tokens(self, name)
+        return super(Corpus, self).view_tokens(name)
 
 
     def view_metadata(self, name):
@@ -193,6 +194,39 @@ class Corpus(BaseCorpus):
         result = [i for i in result if np.isfinite(i)]
 
         return result
+
+
+    def gen_lexicon(self):
+        """
+        Create a corpus object that contains the term types alone (as
+        integers and as strings)
+        """
+        c = Corpus([])
+        c.term_types = self.term_types
+        c.term_types_str = self.term_types_str
+
+        return c
+    
+
+    def dump(self, filename, term_types_only=False):
+
+        if term_types_only:
+
+            gen_lexicon().dump(filename)
+
+        else:
+            super(Corpus, self).dump(filename)
+
+
+    def dumpz(self, filename, term_types_only=False):
+
+        if term_types_only:
+
+            gen_lexicon().dumpz(filename)
+
+        else:
+            super(Corpus, self).dumpz(filename)
+
 
 
 
