@@ -3,7 +3,7 @@ from copy import deepcopy
 
 from inphosemantics import *
 
-from inphosemantics.corpus.tokenizer import IepTokens, SepTokens
+from inphosemantics.corpus.tokenizer import ArticlesTokenizer
 
 from inphosemantics.model.tf import TfModel
 from inphosemantics.viewer.tfviewer import TfViewer
