@@ -1,11 +1,12 @@
 import os
 import shutil
 import tempfile
-from multiprocessing import Pool, cpu_count
+import multiprocessing as mp
 
 import numpy as np
-from scipy.misc import factorial
-from numpy.dual import fft, ifft
+import scipy as sc
+from numpy import dual
+
 
 from inphosemantics import load_matrix, dump_matrix
 from inphosemantics.model import Model
@@ -18,7 +19,7 @@ class RandomPermutations(object):
 
     def __init__(self, dimension, n, seed=None):
 
-        if n > factorial(dimension):
+        if n > sc.misc.factorial(dimension):
 
             raise Exception('Maximum number of distinct permutations exceeded.')
         
@@ -71,7 +72,15 @@ def order_fn(ind_sent_list):
     placeholder = order_fn.placeholder
 
 
-    mem_matrix = np.zeros(env_matrix.shape, dtype=np.float32)
+    # Very slow in SciPy v. 0.7.2. Same for dok_matrix.
+    # mem_matrix = lil_matrix(env_matrix.shape)
+
+    # Occupies too much memory
+    # mem_matrix = np.zeros(env_matrix.shape, dtype=np.float32)
+
+    # So, using dictionary as temporary sparse matrix
+    mem_matrix = dict()
+
 
     print 'Training on chunk of sentences', index
 
@@ -100,13 +109,19 @@ def order_fn(ind_sent_list):
                         return vector_list[0]
 
                     else:
-                        v1 = fft(left_permutation(f(vector_list[:-1])))
-                        v2 = fft(right_permutation(vector_list[len(vector_list)-1]))
-                        return ifft(v1 * v2)
+                        v1 = dual.fft(left_permutation(f(vector_list[:-1])))
+                        v2 = dual.fft(right_permutation(vector_list[len(vector_list)-1]))
+                        return dual.ifft(v1 * v2)
 
 
                 order_vector = f(vector_list)
+
+
+                if word not in mem_matrix:
+                    mem_matrix[word] = np.zeros(env_matrix.shape[1], dtype=np.float32)
+
                 mem_matrix[word] += order_vector
+
 
 
     print 'Chunk of sentences', index, '\n', mem_matrix
@@ -145,10 +160,16 @@ class BeagleOrder(Model):
                             token_type,
                             stoplist,
                             n_columns)
-            env_matrix = env_model.matrix
+        else:
+            env_model = BeagleEnvironment(env_matrix)
 
+        __shape = env_model.matrix.shape
 
-        order_fn.env_matrix = env_matrix
+        order_fn.env_matrix = env_model.matrix
+
+        del env_model
+        del env_matrix
+
 
         
         temp_dir = tempfile.mkdtemp()
@@ -160,7 +181,7 @@ class BeagleOrder(Model):
 
         if not placeholder:
 
-            placeholder = np.random.random(env_matrix.shape[1])
+            placeholder = np.random.random(__shape[1])
             placeholder *= 2
             placeholder -= 1
             placeholder /= np.sum(placeholder**2)**(1./2)
@@ -172,7 +193,7 @@ class BeagleOrder(Model):
 
 
         if not right_permutation or not left_permutation:
-            permutations = RandomPermutations(env_matrix.shape[1], 2)
+            permutations = RandomPermutations(__shape[1], 2)
 
         if right_permutation:
             order_fn.right_permutation = right_permutation
@@ -184,39 +205,48 @@ class BeagleOrder(Model):
         else:
             order_fn.left_permutation = permutations.permutations[1]
 
-        print 'Right permutation', order_fn.right_permutation(np.arange(env_matrix.shape[1]))
+        print 'Right permutation', order_fn.right_permutation(np.arange(__shape[1]))
 
-        print 'Left permutation', order_fn.left_permutation(np.arange(env_matrix.shape[1]))
-
-
+        print 'Left permutation', order_fn.left_permutation(np.arange(__shape[1]))
 
 
-        n_cores = cpu_count()
+
+
         sentences = corpus.view_tokens(token_type)
+        
+        # number of sentences in a chunk of sentences
+        n = 500
 
-        m = len(sentences) / n_cores
-        sent_lists = [sentences[i*m:(i+1)*m]
-                      for i in xrange(n_cores)]
-        sent_lists[-1].extend(sentences[m*n_cores:])
+        sent_lists = np.split(np.asarray(sentences, dtype=np.object_),
+                              np.arange(n, len(sentences), n))
 
         ind_sent_lists = list(enumerate(sent_lists))
 
 
+
         # Map
-        p = Pool()
+        p = mp.Pool()
         results = p.map(order_fn, ind_sent_lists, 1)
         p.close()
 
 
+
+        del order_fn.env_matrix
+
+
         # Reduce
-        self.matrix = np.zeros(env_matrix.shape, dtype=np.float32)
+        self.matrix = np.zeros(__shape, dtype=np.float32)
         
         for result in results:
 
             print 'Reducing', result
 
             summand = load_matrix(result)
-            self.matrix += summand
+
+            for i,row in summand.iteritems():
+                self.matrix[i,:] += row
+
+            # self.matrix += summand
 
 
         # Clean up

@@ -1,7 +1,8 @@
 import os
 import shutil
 import tempfile
-from multiprocessing import Pool, cpu_count
+import multiprocessing as mp
+
 
 import numpy as np
 from scipy.sparse import lil_matrix
@@ -17,14 +18,19 @@ def context_fn(ind_sent_list):
     index = ind_sent_list[0]
     sent_list = ind_sent_list[1]
 
-    stoplist = context_fn.stoplist
     env_matrix = context_fn.env_matrix
+
     temp_dir = context_fn.temp_dir
 
-    # Very slow for larger matrices in SciPy v. 0.7.2. Same for dok_matrix.
+    # Very slow in SciPy v. 0.7.2. Same for dok_matrix.
     # mem_matrix = lil_matrix(env_matrix.shape)
 
-    mem_matrix = np.zeros(env_matrix.shape, dtype=np.float32)
+    # Occupies too much memory
+    # mem_matrix = np.zeros(env_matrix.shape, dtype=np.float32)
+
+    # So, using dictionary as temporary sparse matrix
+    mem_matrix = dict()
+
 
     print 'Training on chunk of sentences', index
 
@@ -32,19 +38,26 @@ def context_fn(ind_sent_list):
 
         for i,word in enumerate(sent):
 
-            context = np.delete(sent, i)
+            if word not in mem_matrix:
+                mem_matrix[word] = np.zeros(env_matrix.shape[1], dtype=np.float32)
 
-            for ctxword in context:
+            # Left context
+            for ctxword in sent[:i]:
 
-                # It's unclear to me why this passes the first
-                # test but fails the second when using a lil_matrix:
-                mem_matrix[word,:] += env_matrix[ctxword,:]
+                mem_matrix[word] += env_matrix[ctxword,:]
 
-                # for i in xrange(mem_matrix.shape[1]):
-                #     mem_matrix[word,i] += env_matrix[ctxword,i]
+                # mem_matrix[word,:] += env_matrix[ctxword,:]
+
+            # Right context
+            for ctxword in sent[i+1:]:
+
+                mem_matrix[word] += env_matrix[ctxword,:]
+                
+                # mem_matrix[word,:] += env_matrix[ctxword,:]
 
 
-    print 'Chunk of sentences', index, '\n', mem_matrix
+    print 'Chunk of sentences', index
+    # print mem_matrix
                     
     tmp_file =\
         os.path.join(temp_dir, 'context-' + str(index) + '.tmp.npy')
@@ -67,8 +80,6 @@ class BeagleContext(Model):
               n_columns=None,
               env_matrix=None):
 
-        context_fn.stoplist = stoplist
-
 
         if env_matrix == None:
             env_model = BeagleEnvironment()
@@ -76,48 +87,59 @@ class BeagleContext(Model):
                             token_type,
                             stoplist,
                             n_columns)
-            env_matrix = env_model.matrix
-
+        else:
+            env_model = BeagleEnvironment(env_matrix)
 
         #Apply stoplist to environment matrix
-        env_model = BeagleEnvironment(env_matrix)
         env_model.filter_rows(stoplist)
-        env_matrix = env_model.matrix
 
-        context_fn.env_matrix = env_matrix
+
+        __shape = env_model.matrix.shape
+
+
+        context_fn.env_matrix = env_model.matrix
+
+        del env_model
+        del env_matrix
 
 
         
         temp_dir = tempfile.mkdtemp()
         context_fn.temp_dir = temp_dir
 
-        n_cores = cpu_count()
-        sentences = corpus.view_tokens(token_type)
 
-        m = len(sentences) / n_cores
-        sent_lists = [sentences[i*m:(i+1)*m]
-                      for i in xrange(n_cores)]
-        sent_lists[-1].extend(sentences[m*n_cores:])
+        sentences = corpus.view_tokens(token_type)
+        
+        # number of sentences in a chunk of sentences
+        n = 500
+
+        sent_lists = np.split(np.asarray(sentences, dtype=np.object_),
+                              np.arange(n, len(sentences), n))
 
         ind_sent_lists = list(enumerate(sent_lists))
 
 
         # Map
-        p = Pool()
+        p = mp.Pool()
         results = p.map(context_fn, ind_sent_lists, 1)
         p.close()
 
 
+        del context_fn.env_matrix
+
+
         # Reduce
-        self.matrix = np.zeros(env_matrix.shape, dtype=np.float32)
+        self.matrix = np.zeros(__shape, dtype=np.float32)
         
         for result in results:
 
             print 'Reducing', result
 
             summand = load_matrix(result)
-            self.matrix += summand
+            # self.matrix += summand
 
+            for i,row in summand.iteritems():
+                self.matrix[i,:] += row
 
         # Clean up
         print 'Deleting temporary directory\n'\
