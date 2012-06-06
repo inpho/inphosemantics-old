@@ -83,12 +83,16 @@ def simmat_terms(viewer, term_list):
 
     terms = viewer.corpus.term_types_str
 
-    terms_rev = dict(zip(terms, xrange(len(terms))))
+    ## Generate an index ID for each term.
+    indices = range(len(terms))
 
-    indices = [terms_rev[term] for term in term_list]
+    ## Create a dictionary of string terms to integer indices.
+    terms_rev = dict(zip(terms, indices))
 
+    ## Create a similarity matrix
     simmat = viewer.model.simmat_rows(indices)
 
+    ## Replace the numerical indexing with terms indices
     simmat.indices = term_list
 
     return simmat
