@@ -352,10 +352,13 @@ class InphoTrainer(object):
 
 
 
-tokenizer_dict = dict(iep=ArticlesTokenizer,
-                      sep=ArticlesTokenizer,
-                      malaria=ArticlesTokenizer,
-                      philpapers=ArticlesTokenizer)
+tokenizer_dict = {
+    'iep': ArticlesTokenizer,
+    'sep': ArticlesTokenizer,
+    'sep-iep': ArticlesTokenizer,
+    'malaria': ArticlesTokenizer,
+    'philpapers': ArticlesTokenizer
+}
 
 
 
