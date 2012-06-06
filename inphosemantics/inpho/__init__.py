@@ -259,9 +259,18 @@ class InphoViewer(object):
             stoplist = merge_stoplists(model_params['stoplist'])
 
             viewer_params['stoplist'] = stoplist
-            
 
-        return viewer_type(**viewer_params)
+
+        viewer = viewer_type(**viewer_params)
+
+        viewer.corpus_name = corpus_name
+        viewer.corpus_param = corpus_param
+        viewer.model_name = model_name
+        viewer.term_types_only = term_types_only
+
+        return viewer
+
+
 
 
 
