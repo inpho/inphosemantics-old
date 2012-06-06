@@ -67,9 +67,12 @@ def gen_nwb(matrix, labels, corpus_name=None,
 
 
 
-def gen_word2word(matrix, labels, filename=None):
+def gen_word2word(matrix, labels, filename=None, comment=None):
 
     out = ''
+
+    if comment:
+        out += comment + '\n\n'
 
     labels = ['"' + label + '"' for label in labels]
 
