@@ -80,21 +80,23 @@ class Viewer(object):
 
 
 def simmat_terms(viewer, term_list):
+    """Returns a similarity matrix of cosine vectors."""
 
     terms = viewer.corpus.term_types_str
 
     ## Generate an index ID for each term.
-    indices = range(len(terms))
+    numTerms = len(terms)
+    terms_rev = dict(zip(terms, xrange(numTerms)))
 
-    ## Create a dictionary of string terms to integer indices.
-    terms_rev = dict(zip(terms, indices))
+    ## Keep only the important indices.
+    indices = [terms_rev[term] for term in term_list]
 
-    ## Create a similarity matrix
+    ## Create a similarity matrix.
     simmat = viewer.model.simmat_rows(indices)
 
-    ## Replace the numerical indexing with terms indices
+    ## Replace the numerical indexing with term indices.
     simmat.indices = term_list
-
+    
     return simmat
 
 
