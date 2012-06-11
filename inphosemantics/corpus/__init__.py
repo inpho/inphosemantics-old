@@ -4,14 +4,13 @@ import pickle
 import numpy as np
 
 
-#TODO: Add a method to dump the terms.
 
 class BaseCorpus(object):
     """
     corpus should be list-like with elements of one type. On
     initialization, corpus will be converted to a numpy array.
 
-    terms is the *set* of term tokens recast as a list (so an
+    terms is the *set* of term tokens recast as a list (effectively an
     indexed set).
 
     'tokens' should be a dictionary whose values are lists of
@@ -30,42 +29,34 @@ class BaseCorpus(object):
 
 
     def __getitem__(self, i):
+
         return self.corpus[i]
+
 
     def _set_terms(self):
         
         self.terms = list(set(self.corpus))
 
 
-    # Work in progress
 
-    # def view_tokens(self, name):
-    #     """
-    #     Takes a key name and returns a list of lists of strings.
-    #     Intended usage: the key name is the name of a tokenization
-    #     stored in tokens and the output is the actual list of tokens.
+    def view_tokens(self, name):
+        """
+        Takes a key name and returns a list of lists of strings.
+        Intended usage: the key name is the name of a tokenization
+        stored in tokens and the output is the actual list of tokens.
 
-    #     Unless 'terms' or 'words' are keywords in tokens,
-    #     view_tokens('words') or view_tokens('terms') returns corpus
-    #     (encoded if encoder is given).
-    #     """
+        Unless 'terms' or 'words' are keywords in tokens,
+        view_tokens('words') or view_tokens('terms') returns corpus
+        (encoded if encoder is given).
+        """
         
-    #     if ((name == 'terms' or name == 'words')
-    #         and name not in tokens):
+        if ((name == 'terms' or name == 'words')
+            and name not in tokens):
 
-    #         tokens = self.corpus
+            return self.corpus
 
-    #     else:
-    #         tokens = np.split(self.corpus, self.tokens[name])
-
-
-    #     #TODO: Rewrite this so as to return a numpy array (i.e., an object
-    #     #with a datatype)
-
-    #     if encoder:
-    #         return map(lambda l: self.encode(l, encoder), tokens)
-    #     else:
-    #         return tokens
+        else:
+            return np.split(self.corpus, self.tokens[name])
 
 
 
@@ -74,7 +65,7 @@ class BaseCorpus(object):
         """
         Checks for invalid tokenizations. Specifically, checks to see
         that the list of indices are sorted and are
-        in range. Allows empty tokens.
+        in range. Ignores empty tokens.
         """
         if self.tokens:
             for k,v in self.tokens.iteritems():
