@@ -41,13 +41,17 @@ class BaseCorpus(object):
 
     def view_tokens(self, name):
         """
-        Takes a key name and returns a list of lists of strings.
+        Takes a key name.
+
+        Returns a list of numpy arrays or
+
+        if name == 'terms' and 'terms' is not a key in tokens, returns corpus
+
+        if name == 'words' and 'words' is not a key in tokens, returns corpus
+
         Intended usage: the key name is the name of a tokenization
         stored in tokens and the output is the actual list of tokens.
 
-        Unless 'terms' or 'words' are keywords in tokens,
-        view_tokens('words') or view_tokens('terms') returns corpus
-        (encoded if encoder is given).
         """
         
         if ((name == 'terms' or name == 'words')
