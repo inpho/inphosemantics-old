@@ -28,8 +28,9 @@ setup(
         "nltk>=2.0.0"
     ],
     packages=['inphosemantics', 'inphosemantics.corpus',
-              'inphosemantics.model'],
-    data_files=[('inphosemantics/corpus',
-                 ['inphosemantics/corpus/beagle-stopwords-jones.txt'])]
+              'inphosemantics.model', 'inphosemantics.viewer',
+              'inphosemantics.inpho'],
+    # data_files=[('inphosemantics/corpus',
+    #              ['inphosemantics/corpus/beagle-stopwords-jones.txt'])]
 
 )
