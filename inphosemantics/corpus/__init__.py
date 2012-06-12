@@ -35,7 +35,7 @@ class BaseCorpus(object):
 
     def _set_terms(self):
         
-        self.terms = list(set(self.corpus))
+        self.terms = np.asarray(list(set(self.corpus)), dtype=dtype)
 
 
 
@@ -133,16 +133,54 @@ class Corpus(BaseCorpus):
     
     def __init__(self, corpus, tokens=None, tokens_meta=None):
 
-        super(Corpus, self).__init__(corpus, tokens=tokens)
-        
-        int_corp = self.encode_corpus()
+        self.terms_str = np.asarray(list(set(self.corpus)))
 
-        self.corpus = int_corp[0].corpus
-        # just the list of integers 0, ..., n
-        self.terms = int_corp[0].terms 
-        self.terms_str = int_corp[1]
+        int_corpus = self.map_corpus_int()
+
+        super(Corpus, self).__init__(int_corpus, tokens=tokens)
 
         self.tokens_meta = tokens_meta
+
+        self.terms_int = dict()
+
+        
+
+
+
+    def encode(token, encoder):
+        """
+        Takes some kind of token and returns its value(s) according to
+        the encoder. If the token is a string or a non-indexable
+        (e.g., an integer), a single value is returned. Otherwise an
+        array of values is returned.
+        """
+        out = []
+        for x in token:
+            try:
+                out.append(encoder[x])
+            except KeyError:
+                out.append(np.NaN)
+
+        return out
+
+
+    
+    def map_corpus_int(self):
+        """
+        """
+        print 'Setting terms'
+
+        self.terms_int = dict(zip(self.terms_str, xrange(len(self.terms_str))))
+        
+        print 'Extracting sequence of word tokens'
+        int_corp = [word_dict[token] for token in self.corpus]
+
+        encoded_corpus =\
+            BaseCorpus(int_corp, tokens=self.tokens,
+                       dtype=np.uint32)
+    
+        return encoded_corpus, self.terms
+
 
 
 
@@ -182,49 +220,6 @@ class Corpus(BaseCorpus):
             return map(lambda l: self.encode(l, encoder), tokens)
         else:
             return tokens
-
-
-    def encode(self, token, encoder):
-        """
-        Takes some kind of token and returns its value(s) according to
-        the encoder. If the token is a string or a non-indexable
-        (e.g., an integer), a single value is returned. Otherwise an
-        array of values is returned.
-        """
-        out = []
-        for x in token:
-            try:
-                out.append(encoder[x])
-            except KeyError:
-                out.append(np.NaN)
-
-        return out
-
-
-    
-    def encode_corpus(self):
-        """
-        Returns an instance of BaseCorpus and a list of terms
-
-
-        """
-        print 'Getting terms'
-        words = self.terms
-        word_dict = dict(zip(words, xrange(len(words))))
-        
-        print 'Extracting sequence of word tokens'
-        int_corp = [word_dict[token] for token in self.corpus]
-
-        encoded_corpus =\
-            BaseCorpus(int_corp, tokens=self.tokens,
-                       dtype=np.uint32)
-    
-        return encoded_corpus, self.terms
-
-
-
-
-
 
 
 
