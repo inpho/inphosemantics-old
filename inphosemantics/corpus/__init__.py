@@ -4,6 +4,10 @@ import pickle
 import numpy as np
 
 
+def extract_terms(corpus, dtype=None):
+
+    return np.asarray(list(set(corpus)), dtype=dtype)
+
 
 class BaseCorpus(object):
     """
@@ -24,18 +28,13 @@ class BaseCorpus(object):
         self.tokens = tokens
         self.validate_tokens()
 
-        self._set_terms()
+        self.terms = extract_terms(corpus, dtype=dtype)
 
 
 
     def __getitem__(self, i):
 
         return self.corpus[i]
-
-
-    def _set_terms(self):
-        
-        self.terms = np.asarray(list(set(self.corpus)), dtype=dtype)
 
 
 
@@ -55,7 +54,8 @@ class BaseCorpus(object):
         """
         
         if ((name == 'terms' or name == 'words')
-            and name not in tokens):
+            and (self.tokens == None
+                 or name not in self.tokens)):
 
             return self.corpus
 
@@ -115,123 +115,81 @@ class BaseCorpus(object):
 
 class Corpus(BaseCorpus):
     """
-    Corpus is an instance of BaseCorpus with datatype uint32 that
+    Corpus is an instance of BaseCorpus with datatype int32 that
     bundles various useful data and methods associated with a given
     instance of BaseCorpus.
-
-    filename
 
     metadata associated with any given tokenization: terms, sentences,
     etc.
 
     Expected usage. corpus would be the atomic tokens (e.g.,
-    words) as strings. Instantiation of Corpus will encode
-    corpus and store terms as a list of strings under
-    self.terms_str.
+    words) as strings. Instantiation of Corpus will map the
+    corpus to integer representations of the terms.
+
+    terms is the indexed set of strings occurring in corpus. It is
+    string-typed numpy array.
+
+    terms_int is a mapping object whose keys are given by terms and
+    whose values are their corresponding integers
     
     """
     
-    def __init__(self, corpus, tokens=None, tokens_meta=None):
+    def __init__(self,
+                 corpus,
+                 tokens=None,
+                 tokens_meta=None):
 
-        self.terms_str = np.asarray(list(set(self.corpus)))
+        super(Corpus, self).__init__(corpus, tokens=tokens)
 
-        int_corpus = self.map_corpus_int()
-
-        super(Corpus, self).__init__(int_corpus, tokens=tokens)
+        self.terms_int =\
+            dict(zip(self.terms, xrange(len(self.terms))))
+        
+        self.corpus =\
+            np.asarray([self.terms_int[term]
+                        for term in self.corpus], dtype=np.int32)
 
         self.tokens_meta = tokens_meta
 
-        self.terms_int = dict()
-
-        
 
 
 
-    def encode(token, encoder):
+
+    def view_tokens(self, name, strings=False):
         """
-        Takes some kind of token and returns its value(s) according to
-        the encoder. If the token is a string or a non-indexable
-        (e.g., an integer), a single value is returned. Otherwise an
-        array of values is returned.
-        """
-        out = []
-        for x in token:
-            try:
-                out.append(encoder[x])
-            except KeyError:
-                out.append(np.NaN)
+        Extends BaseCorpus.view_tokens
 
-        return out
+        If strings == True, the terms are returned as their string
+        representations.
 
-
-    
-    def map_corpus_int(self):
-        """
-        """
-        print 'Setting terms'
-
-        self.terms_int = dict(zip(self.terms_str, xrange(len(self.terms_str))))
-        
-        print 'Extracting sequence of word tokens'
-        int_corp = [word_dict[token] for token in self.corpus]
-
-        encoded_corpus =\
-            BaseCorpus(int_corp, tokens=self.tokens,
-                       dtype=np.uint32)
-    
-        return encoded_corpus, self.terms
-
-
-
-
-
-
-    def view_tokens(self, name, encoder=None):
-        """
-        Takes a key name and returns a list of lists of strings.
-        Intended usage: the key name is the name of a tokenization in
-        term_dict and the output is the actual list of tokens.
-
-        'encoder' is an indexable mapping the corpus to something.
-        Typical usage: where corpus is of integer-type, the encoder
-        might be the terms so that the output is a list of
-        string-typed arrays; where the corpus is of string-type, the
-        encoder might be a dictionary mapping terms to their indices
-        so that the output is a list of integer-typed arrays.
-
-        Unless 'terms' or 'words' are keywords in tokens,
-        view_tokens('words') or view_tokens('terms') returns corpus
-        (encoded if encoder is given).
+        If strings == False, the terms are returned as their integer
+        representations.
         """
         
-        if ((name == 'terms' or name == 'words')
-            and name not in tokens):
+        token_list = super(Corpus, self).view_tokens(name)
 
-            tokens = self.corpus
+        if len(token_list) > 0:
 
-        else:
-            tokens = np.split(self.corpus, self.tokens[name])
+            if strings:
+
+                if np.isscalar(token_list[0]):
+
+                    token_list = [self.terms[t] for t in token_list]
+
+                    token_list = np.array(token_list, dtype=np.str_)
+
+                else:
+                    
+                    for i,token in enumerate(token_list):
+
+                        token_str = [self.terms[t] for t in token]
+                    
+                        token_list[i] = np.array(token_str, dtype=np.str_)
+            
+
+        return token_list
 
 
-        #TODO: Rewrite this so as to return a numpy array (i.e., an object
-        #with a datatype)
 
-        if encoder:
-            return map(lambda l: self.encode(l, encoder), tokens)
-        else:
-            return tokens
-
-
-
-
-
-    # def view_tokens(self, name, strings=False):
-
-    #     if strings:
-    #         return super(Corpus, self).view_tokens(name,\
-    #                                     encoder=self.terms_str)
-
-    #     return super(Corpus, self).view_tokens(name)
 
 
     def view_metadata(self, name):
@@ -239,18 +197,6 @@ class Corpus(BaseCorpus):
         return self.tokens_meta[name]
 
 
-    def encode_tokens_str(self, tokens_str):
-
-        keys = self.terms_str
-        values = xrange(len(keys))
-        mapping = dict(zip(keys, values))
-
-        result = self.encode(tokens_str, mapping)
-
-        # Make mapping a total function
-        result = [i for i in result if np.isfinite(i)]
-
-        return result
 
 
     def gen_lexicon(self):
@@ -260,7 +206,7 @@ class Corpus(BaseCorpus):
         """
         c = Corpus([])
         c.terms = self.terms
-        c.terms_str = self.terms_str
+        c.terms_int = self.terms_int
 
         return c
     
