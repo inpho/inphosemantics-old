@@ -25,8 +25,15 @@ class BaseCorpus(object):
 
         self.corpus = np.asarray(corpus, dtype=dtype)
 
+
         self.tokens = tokens
+
+        # recast tokens_meta values as numpy arrays
+        for k,v in self.tokens.iteritems():
+            self.tokens[k] = np.asarray(v)
+
         self.validate_tokens()
+
 
         self.terms = extract_terms(corpus, dtype=dtype)
 
@@ -81,7 +88,7 @@ class BaseCorpus(object):
                                         + ': tokens ' + str(j)
                                         + ' and ' + str(v[i+1]))
                     
-                    if j >= len(self.corpus):
+                    if j > len(self.corpus):
                         print v[-30:]
                         raise Exception('invalid tokenization for ' + str(k)
                                         + ': ' + str(j) + ' is out of range ('
@@ -115,22 +122,65 @@ class BaseCorpus(object):
 
 class Corpus(BaseCorpus):
     """
-    Corpus is an instance of BaseCorpus with datatype int32 that
-    bundles various useful data and methods associated with a given
-    instance of BaseCorpus.
+    The goal of the Corpus class is to provide an efficient
+    representation of a textual corpus.
 
-    metadata associated with any given tokenization: terms, sentences,
-    etc.
+    A Corpus object contains an integer representation of the text and
+    mapping objects to facilitate conversion between integer and
+    string representations of the text.
+
+    As a subclass of BaseCorpus it includes a dictionary of
+    tokenizations of the corpus and a method for viewing (without
+    copying) these tokenizations.
+
+    A Corpus object also stores metadata (e.g., document names)
+    associated with the available tokenizations.
 
     Expected usage. corpus would be the atomic tokens (e.g.,
     words) as strings. Instantiation of Corpus will map the
     corpus to integer representations of the terms.
 
-    terms is the indexed set of strings occurring in corpus. It is
+    terms is the indexed set of strings occurring in corpus. It is a
     string-typed numpy array.
 
     terms_int is a mapping object whose keys are given by terms and
     whose values are their corresponding integers
+
+
+    Examples
+    --------
+
+    >>> text = ['I', 'came', 'I', 'saw', 'I', 'conquered']
+    >>> sents = [2,4]
+    >>> meta = ['Veni','Vidi','Vici']
+    >>> tokens = {'sentences': sents}
+    >>> tokens_meta = {'sentences': meta}
+
+    >>> from inphosemantics.corpus import Corpus
+    >>> c = Corpus(text, tokens, tokens_meta)
+    >>> c.corpus
+    array([0, 3, 0, 2, 0, 1], dtype=int32)
+    
+    >>> c.terms
+    array(['I', 'conquered', 'saw', 'came'],
+          dtype='|S9')
+
+    >>> c.terms_int['saw']
+    2
+
+    >>> c.view_tokens('sentences')
+    [array([0, 3], dtype=int32), array([0, 2], dtype=int32),
+     array([0, 1], dtype=int32)]
+
+    >>> c.view_tokens('sentences', True)
+    [array(['I', 'came'],
+          dtype='|S4'), array(['I', 'saw'],
+          dtype='|S3'), array(['I', 'conquered'],
+          dtype='|S9')]
+
+    >>> c.tokens_meta['sentences'][1]
+    'Vidi'
+
     
     """
     
@@ -149,6 +199,10 @@ class Corpus(BaseCorpus):
                         for term in self.corpus], dtype=np.int32)
 
         self.tokens_meta = tokens_meta
+        
+        # recast tokens_meta values as numpy arrays
+        for k,v in self.tokens_meta.iteritems():
+            self.tokens_meta[k] = np.asarray(v)
 
 
 
@@ -192,17 +246,11 @@ class Corpus(BaseCorpus):
 
 
 
-    def view_metadata(self, name):
-
-        return self.tokens_meta[name]
-
-
-
 
     def gen_lexicon(self):
         """
-        Create a corpus object that contains the term types alone (as
-        integers and as strings)
+        Create a corpus object that contains only the terms (as
+        integers and as strings) but not the corpus itself
         """
         c = Corpus([])
         c.terms = self.terms
@@ -243,262 +291,115 @@ def genBaseCorpus():
                       {'sentences' : [3]})
 
 
-def test_BaseCorpus():
+# def test_BaseCorpus():
 
-    from inphosemantics.corpus.tokenizer import IepTokens
+#     from inphosemantics.corpus.tokenizer import IepTokens
 
-    path = 'test-data/iep/selected/corpus/plain'
+#     path = 'test-data/iep/selected/corpus/plain'
 
-    tokens = IepTokens(path)
+#     tokens = IepTokens(path)
 
-    c = BaseCorpus(tokens.word_tokens, tokens.tokens)
+#     c = BaseCorpus(tokens.word_tokens, tokens.tokens)
 
-    print 'First article:\n', c.view_tokens('articles')[1]
-    print '\nFirst five paragraphs:\n', c.view_tokens('paragraphs')[:5]
-    print '\nFirst ten sentences:\n', c.view_tokens('sentences')[:10]
+#     print 'First article:\n', c.view_tokens('articles')[1]
+#     print '\nFirst five paragraphs:\n', c.view_tokens('paragraphs')[:5]
+#     print '\nFirst ten sentences:\n', c.view_tokens('sentences')[:10]
 
-    print '\nLast article:\n', c.view_tokens('articles')[-1]
-    print '\nLast five paragraphs:\n', c.view_tokens('paragraphs')[-5:]
-    print '\nLast ten sentences:\n', c.view_tokens('sentences')[-10:]
+#     print '\nLast article:\n', c.view_tokens('articles')[-1]
+#     print '\nLast five paragraphs:\n', c.view_tokens('paragraphs')[-5:]
+#     print '\nLast ten sentences:\n', c.view_tokens('sentences')[-10:]
 
-    return c
+#     return c
 
 
-def test_integer_corpus():
+# def test_integer_corpus():
 
-    from inphosemantics.corpus.tokenizer import IepTokens
+#     from inphosemantics.corpus.tokenizer import IepTokens
 
-    path = 'test-data/iep/selected/corpus/plain'
+#     path = 'test-data/iep/selected/corpus/plain'
 
-    tokens = IepTokens(path)
+#     tokens = IepTokens(path)
 
-    c = BaseCorpus(tokens.word_tokens, tokens.tokens)
+#     c = BaseCorpus(tokens.word_tokens, tokens.tokens)
 
-    int_corpus, encoder = c.encode_corpus()
+#     int_corpus, encoder = c.encode_corpus()
 
-    print 'First article:\n',\
-          int_corpus.view_tokens('articles', encoder)[1]
-    print '\nFirst five paragraphs:\n',\
-          int_corpus.view_tokens('paragraphs', encoder)[:5]
-    print '\nFirst ten sentences:\n',\
-          int_corpus.view_tokens('sentences', encoder)[:10]
+#     print 'First article:\n',\
+#           int_corpus.view_tokens('articles', encoder)[1]
+#     print '\nFirst five paragraphs:\n',\
+#           int_corpus.view_tokens('paragraphs', encoder)[:5]
+#     print '\nFirst ten sentences:\n',\
+#           int_corpus.view_tokens('sentences', encoder)[:10]
 
-    print '\nLast article:\n',\
-          int_corpus.view_tokens('articles', encoder)[-1]
-    print '\nLast five paragraphs:\n',\
-          int_corpus.view_tokens('paragraphs', encoder)[-5:]
-    print '\nLast ten sentences:\n',\
-          int_corpus.view_tokens('sentences', encoder)[-10:]
+#     print '\nLast article:\n',\
+#           int_corpus.view_tokens('articles', encoder)[-1]
+#     print '\nLast five paragraphs:\n',\
+#           int_corpus.view_tokens('paragraphs', encoder)[-5:]
+#     print '\nLast ten sentences:\n',\
+#           int_corpus.view_tokens('sentences', encoder)[-10:]
 
-    return int_corpus, encoder
+#     return int_corpus, encoder
 
 
-def test_Corpus():
+# def test_Corpus():
 
-    from inphosemantics.corpus.tokenizer import IepTokens
+#     from inphosemantics.corpus.tokenizer import IepTokens
 
-    path = 'test-data/iep/selected/corpus/plain'
+#     path = 'test-data/iep/selected/corpus/plain'
 
-    tokens = IepTokens(path)
+#     tokens = IepTokens(path)
 
-    c = Corpus(tokens.word_tokens, tokens.tokens,
-               tokens.tokens_metadata)
+#     c = Corpus(tokens.word_tokens, tokens.tokens,
+#                tokens.tokens_metadata)
 
-    print 'First article:\n',\
-          c.view_tokens('articles', True)[1]
-    print '\nFirst five paragraphs:\n',\
-          c.view_tokens('paragraphs', True)[:5]
-    print '\nFirst ten sentences:\n',\
-          c.view_tokens('sentences', True)[:10]
+#     print 'First article:\n',\
+#           c.view_tokens('articles', True)[1]
+#     print '\nFirst five paragraphs:\n',\
+#           c.view_tokens('paragraphs', True)[:5]
+#     print '\nFirst ten sentences:\n',\
+#           c.view_tokens('sentences', True)[:10]
 
-    print '\nLast article:\n',\
-          c.view_tokens('articles', True)[-1]
-    print '\nLast five paragraphs:\n',\
-          c.view_tokens('paragraphs', True)[-5:]
-    print '\nLast ten sentences:\n',\
-          c.view_tokens('sentences', True)[-10:]
+#     print '\nLast article:\n',\
+#           c.view_tokens('articles', True)[-1]
+#     print '\nLast five paragraphs:\n',\
+#           c.view_tokens('paragraphs', True)[-5:]
+#     print '\nLast ten sentences:\n',\
+#           c.view_tokens('sentences', True)[-10:]
 
-    print '\nSource of second article:',\
-          c.view_metadata('articles')[2]
+#     print '\nSource of second article:',\
+#           c.view_metadata('articles')[2]
 
-    return c
+#     return c
 
 
-def test_Corpus_dumpz():
+# def test_Corpus_dumpz():
 
-    from inphosemantics.corpus.tokenizer import IepTokens
+#     from inphosemantics.corpus.tokenizer import IepTokens
 
-    path = 'test-data/iep/selected/corpus/plain'
-    filename = 'test-data/iep/selected/corpus/iep-selected.pickle.bz2'
+#     path = 'test-data/iep/selected/corpus/plain'
+#     filename = 'test-data/iep/selected/corpus/iep-selected.pickle.bz2'
 
-    tokens = IepTokens(path)
+#     tokens = IepTokens(path)
 
-    c = Corpus(tokens.word_tokens, tokens.tokens,
-               tokens.tokens_metadata)
+#     c = Corpus(tokens.word_tokens, tokens.tokens,
+#                tokens.tokens_metadata)
 
-    c.dumpz(filename)
+#     c.dumpz(filename)
 
 
-def test_Corpus_dumpz_plato():
+# def test_Corpus_dumpz_plato():
 
-    from inphosemantics.corpus.tokenizer import IepTokens
+#     from inphosemantics.corpus.tokenizer import IepTokens
 
-    path = 'test-data/iep/plato/corpus/plain'
-    filename = 'test-data/iep/plato/corpus/iep-plato.pickle.bz2'
+#     path = 'test-data/iep/plato/corpus/plain'
+#     filename = 'test-data/iep/plato/corpus/iep-plato.pickle.bz2'
 
-    tokens = IepTokens(path)
+#     tokens = IepTokens(path)
 
-    c = Corpus(tokens.word_tokens, tokens.tokens,
-               tokens.tokens_metadata)
+#     c = Corpus(tokens.word_tokens, tokens.tokens,
+#                tokens.tokens_metadata)
 
-    c.dumpz(filename)
+#     c.dumpz(filename)
 
 
 
-# import codecs
-# import os.path
-
-# from nltk.corpus import stopwords as nltk_stopwords
-
-# class CorpusBase(object):
-
-#     data_root = '/var/inphosemantics/data/'
-
-#     def __init__(self, corpus, corpus_param):
-        
-#         self.corpus = corpus
-#         self.corpus_param = corpus_param
-        
-#         self.corpus_path =\
-#             os.path.join(Corpus.data_root, self.corpus, 
-#                          self.corpus_param, 'corpus')
-
-#         self.tokenized_path = os.path.join(self.corpus_path, 'tokenized')
-#         self.plain_path = os.path.join(self.corpus_path, 'plain')
-
-
-#     #TODO: Collapse these three into one function (if indeed all three
-#     #are needed after refactoring),
-#     def tokenized_document(self, name):
-
-#         if os.path.splitext(name)[1] != '.pickle':
-#             name += '.pickle'
-
-#         tokenized_file = os.path.join(self.tokenized_path, name)
-
-#         print 'Reading tokenized document from', tokenized_file
-#         with open(tokenized_file, 'r') as f:
-#             return pickle.load(f)
-
-
-#     def tokenized_sentences(self, name):
-
-#         if os.path.splitext(name)[1] != '.pickle':
-#             name += '.pickle'
-
-#         tokenized_file = os.path.join(self.tokenized_path, name)
-
-#         print 'Reading tokenized sentences from', tokenized_file
-#         with open(tokenized_file, 'r') as f:
-#             return [sent for para in pickle.load(f) for sent in para]
-
-
-#     def tokenized_paragraphs(self, name):
-
-#         if os.path.splitext(name)[1] != '.pickle':
-#             name += '.pickle'
-
-#         tokenized_file = os.path.join(self.tokenized_path, name)
-
-#         print 'Reading tokenized paragraphs from', tokenized_file
-#         with open(tokenized_file, 'r') as f:
-            
-#             document = pickle.load(f)
-
-#             for i,paragraph in enumerate(document):
-#                 document[i] = [word for sent in paragraph for word in sent]
-
-#             return document
-
-    
-#     def plain_text(self, name):
-
-#         if os.path.splitext(name)[1] != '.txt':
-#             name = name + '.txt'
-
-#         plain_file = os.path.join(self.plain_path, name)
-
-#         print 'Loading plain text file for the article', '\'' + name + '\''
-#         with codecs.open(plain_file, encoding='utf-8', mode='r') as f:
-#             return f.read()
-
-
-#     def raw(self, name):
-#         """
-#         'name' here denotes the name of the html subdirectory directly
-#         containing the article
-#         """
-
-#         # TODO: For now, 'raw' is actually 'html'; this should be
-#         # generalized.
-
-#         raw_file =\
-#             os.path.join(self.corpus_path, 'html', name, 'index.html')
-#         print 'Loading HTML file for the article', '\'' + name + '\''
-
-#         with codecs.open(raw_file, encoding='utf-8', mode='r') as f:
-#             return f.read()
-
-
-
-# class Corpus(CorpusBase):
-
-#     def __init__(self, corpus, corpus_param):
-
-#         CorpusBase.__init__(self, corpus, corpus_param)
-
-#         self.lexicon = self.lexicon()
-#         self.stopwords = self.stopwords()
-
-
-#     def lexicon(self):
-
-#         lexicon_filename =\
-#             '-'.join([self.corpus, self.corpus_param, 'lexicon.pickle'])
-#         lexicon_file =\
-#             os.path.join(self.corpus_path, 'lexicon', lexicon_filename)
-
-#         print 'Reading lexicon'
-#         with open(lexicon_file, 'r') as f:
-#             return pickle.load(f)
-
-
-#     def stopwords(self):
-
-#         # TODO: Manage stop lists properly.
-#         beagle_stop_file =\
-#             os.path.join(__path__[0], 'beagle-stopwords-jones.txt')
-
-#         with open(beagle_stop_file, 'r') as f:
-#             beagle_stop = f.read()
-        
-#         beagle_stop = beagle_stop.split()
-
-#         ext_stop =\
-#             ['especially', 'many', 'several', 'perhaps', 
-#              'various', 'key', 'found', 'particularly', 'later', 
-#              'could', 'might', 'must', 'would', 'may', 'actually',
-#              'either', 'without', 'one', 'also', 'neither', 'well',
-#              'including', 'although', 'much', 'largely', 'clearly', 'thus',
-#              'since', 'regarded', 'indeed', 'however', 'rather',
-#              'ultimately', 'yet', 'according', 'nevertheless', 'finally',
-#              'concerning', 'cf', 'seen', 'primarily', 'conversely',
-#              'relatedly', 'subsequent']
-
-#         print 'Reading stop words'
-
-#         stopwords = set(beagle_stop + ext_stop
-#                         + nltk_stopwords.words('english'))
-#         lexicon = set(self.lexicon)
-
-#         return list(stopwords.intersection(lexicon))
