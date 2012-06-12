@@ -140,11 +140,14 @@ class Corpus(BaseCorpus):
     words) as strings. Instantiation of Corpus will map the
     corpus to integer representations of the terms.
 
+    corpus is a representation of the input corpus as a numpy array of
+    32-bit integer type.
+
     terms is the indexed set of strings occurring in corpus. It is a
     string-typed numpy array.
 
     terms_int is a mapping object whose keys are given by terms and
-    whose values are their corresponding integers
+    whose values are their corresponding integers.
 
 
     Examples
