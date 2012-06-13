@@ -3,14 +3,20 @@ import pickle
 
 import numpy as np
 
-
-def extract_terms(corpus, dtype=None):
-
-    return np.asarray(list(set(corpus)), dtype=dtype)
+__all__ = ['BaseCorpus', 'Corpus']
 
 
 class BaseCorpus(object):
     """
+
+    
+    Parameters
+    ----------
+
+
+    Attributes
+    ----------
+    
     corpus should be list-like with elements of one type. On
     initialization, corpus will be converted to a numpy array.
 
@@ -19,6 +25,12 @@ class BaseCorpus(object):
 
     'tokens' should be a dictionary whose values are lists of
     indices. They are verified presently at initialization.
+
+
+    Examples
+    --------
+
+    
 
     """
     def __init__(self, corpus, tokens=None, dtype=None):
@@ -34,8 +46,7 @@ class BaseCorpus(object):
 
         self.validate_tokens()
 
-
-        self.terms = extract_terms(corpus, dtype=dtype)
+        self._extract_terms()
 
 
 
@@ -43,6 +54,13 @@ class BaseCorpus(object):
 
         return self.corpus[i]
 
+
+    def _extract_terms(corpus, dtype=None):
+
+        ind_term_set = list(set(self.corpus))
+
+        self.terms = np.asarray(ind_term_set,
+                                dtype=self.corpus.dtype)
 
 
     def view_tokens(self, name):
@@ -136,10 +154,6 @@ class Corpus(BaseCorpus):
     A Corpus object also stores metadata (e.g., document names)
     associated with the available tokenizations.
 
-    Expected usage. corpus would be the atomic tokens (e.g.,
-    words) as strings. Instantiation of Corpus will map the
-    corpus to integer representations of the terms.
-
     corpus is a representation of the input corpus as a numpy array of
     32-bit integer type.
 
@@ -154,13 +168,13 @@ class Corpus(BaseCorpus):
     --------
 
     >>> text = ['I', 'came', 'I', 'saw', 'I', 'conquered']
-    >>> sents = [2,4]
-    >>> meta = ['Veni','Vidi','Vici']
+    >>> sents = [2, 4]
+    >>> meta = ['Veni', 'Vidi', 'Vici']
     >>> tokens = {'sentences': sents}
     >>> tokens_meta = {'sentences': meta}
 
     >>> from inphosemantics.corpus import Corpus
-    >>> c = Corpus(text, tokens, tokens_meta)
+    >>> c = Corpus(text, tokens=tokens, tokens_meta=tokens_meta)
     >>> c.corpus
     array([0, 3, 0, 2, 0, 1], dtype=int32)
     
@@ -203,7 +217,7 @@ class Corpus(BaseCorpus):
 
         self.tokens_meta = tokens_meta
         
-        # recast tokens_meta values as numpy arrays
+        # cast tokens_meta values as numpy arrays
         for k,v in self.tokens_meta.iteritems():
             self.tokens_meta[k] = np.asarray(v)
 
