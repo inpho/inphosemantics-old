@@ -8,45 +8,96 @@ __all__ = ['BaseCorpus', 'Corpus']
 
 class BaseCorpus(object):
     """
+    A BaseCorpus object stores a corpus along with its tokenizations
+    (e.g., as sentences, paragraphs or documents).
 
+    BaseCorpus aims to provide an efficient method for viewing the
+    corpus in tokenized form (i.e., without copying). It currently
+    achieves this by storing the corpus as a numpy `ndarray`. Viewing
+    a tokenization is carried out using the `view` facilities of numpy
+    ndarrays. See documentation on `numpy.ndarray` for further
+    details.
     
     Parameters
     ----------
-
+    corpus : array-like
+        Array, typically of strings or integers, of atomic terms (or
+        tokens) making up the corpus
+    tokens : dict-like with 1-D integer array-like values, optional
+        Each key in `tokens` is a name of a tokenization. Each value
+        in `tokens` is an array containing the indices marking the
+        token boundaries. A value in `tokens` is intended for use as a
+        value for the `indices_or_sections` parameter in
+        `numpy.split`. Default is `None`.
+    dtype : data-type, optional
+        The data-type used to interpret the corpus. If omitted, the
+        data-type is determined by `numpy.asarray`. Default is `None`.
 
     Attributes
     ----------
-    
-    corpus should be list-like with elements of one type. On
-    initialization, corpus will be converted to a numpy array.
+    corpus : 1-D array
+        Stores the value of the `corpus` parameter after it has been
+        cast to a array of data-type `dtype` (if provided).
+    terms : 1-D array
+        The indexed set of atomic terms appearing in `corpus`.
+        Computed on initialization by `_extract_terms`.
+    tokens : dict with 1-D numpy integer arrays as values 
+        Stores the value of the `tokens` parameter. On initialization,
+        tokenizations are validated by `validate_tokens` and cast as
+        numpy integer arrays
 
-    terms is the *set* of term tokens recast as a list (effectively an
-    indexed set).
-
-    'tokens' should be a dictionary whose values are lists of
-    indices. They are verified presently at initialization.
+    Methods
+    -------
+    view_tokens
+        Takes a name of tokenization and returns a view of the corpus
+        tokenized accordingly.
+    validate_tokens
+        Static method. Takes a BaseCorpus-like object and verifies
+        that the tokenizations are sorted and in range.
+    extract_terms
+        Static method. Takes an array-like object and returns an
+        indexed set of the elements in the object as a 1-D numpy
+        array.
 
 
     Examples
     --------
 
-    
+    >>> corpus = ['the', 'dog', 'chased', 'the', 'cat',
+                  'the', 'cat', 'ran', 'away']
+    >>> tokens = {'sentences': [5]}
+
+    >>> from inphosemantics.corpus import BaseCorpus
+    >>> c = BaseCorpus(corpus, tokens=tokens)
+    >>> c.corpus
+    array(['the', 'dog', 'chased', 'the', 'cat', 'the', 'cat',
+           'ran', 'away'], dtype='|S6')
+           
+    >>> c.terms
+    array(['ran', 'away', 'chased', 'dog', 'cat', 'the'],
+          dtype='|S6')
+
+    >>> c.view_tokens('sentences')
+    [array(['the', 'dog', 'chased', 'the', 'cat'],
+          dtype='|S6'),
+     array(['the', 'cat', 'ran', 'away'],
+          dtype='|S6')]
 
     """
     def __init__(self, corpus, tokens=None, dtype=None):
 
         self.corpus = np.asarray(corpus, dtype=dtype)
 
-
         self.tokens = tokens
 
-        # recast tokens_meta values as numpy arrays
+        # cast values in `tokens` as numpy arrays
         for k,v in self.tokens.iteritems():
             self.tokens[k] = np.asarray(v)
 
-        self.validate_tokens()
+        self.validate_tokens(self)
 
-        self._extract_terms()
+        self.terms = self.extract_terms(self.corpus,
+                                        dtype=self.corpus.dtype)
 
 
 
@@ -55,83 +106,95 @@ class BaseCorpus(object):
         return self.corpus[i]
 
 
-    def _extract_terms(corpus, dtype=None):
-
-        ind_term_set = list(set(self.corpus))
-
-        self.terms = np.asarray(ind_term_set,
-                                dtype=self.corpus.dtype)
-
-
     def view_tokens(self, name):
         """
-        Takes a key name.
+        Displays a tokenization of the corpus.
 
-        Returns a list of numpy arrays or
+        Parameters
+        ----------
+        name : an immutable
+           The name of a tokenization in `tokens`.
 
-        if name == 'terms' and 'terms' is not a key in tokens, returns corpus
+        Returns
+        -------
+        A tokenized view of `corpus`.
 
-        if name == 'words' and 'words' is not a key in tokens, returns corpus
-
-        Intended usage: the key name is the name of a tokenization
-        stored in tokens and the output is the actual list of tokens.
+        See Also
+        --------
+        BaseCorpus
+        numpy.split
 
         """
         
-        if ((name == 'terms' or name == 'words')
-            and (self.tokens == None
-                 or name not in self.tokens)):
-
-            return self.corpus
-
-        else:
-            return np.split(self.corpus, self.tokens[name])
+        return np.split(self.corpus, self.tokens[name])
 
 
+    @staticmethod
+    def extract_terms(corpus, dtype=None):
+        """
+        Extracts the term set of a corpus.
+        
+        Parameters
+        ----------
+        corpus : array-like
+
+        Returns
+        -------
+        An indexed set of the elements in the object as a 1-D array.
+        """
+        ind_term_set = list(set(corpus))
+
+        return np.asarray(ind_term_set, dtype=dtype)
 
 
-    def validate_tokens(self):
+    @staticmethod
+    def validate_tokens(bcorpus):
         """
         Checks for invalid tokenizations. Specifically, checks to see
-        that the list of indices are sorted and are
-        in range. Ignores empty tokens.
+        that the list of indices are sorted and are in range. Ignores
+        empty tokens.
+
+        Parameters
+        ----------
+        bcorpus : a BaseCorpus object
+
+        Returns
+        -------
+        True if the tokenizations are all valid; otherwise raises an
+        exception.
+
+        Raises
+        ------
+        TODO 
+
         """
-        if self.tokens:
-            for k,v in self.tokens.iteritems():
+        if bcorpus.tokens:
+            for k,v in bcorpus.tokens.iteritems():
                 
                 for i,j in enumerate(v):
                     
-                    if i < len(v)-1 and j > v[i+1]: 
-                        raise Exception('malsorted tokenization for ' + str(k)
-                                        + ': tokens ' + str(j)
-                                        + ' and ' + str(v[i+1]))
+                    if i < len(v)-1 and j > v[i+1]:
+
+                        msg = 'malsorted tokenization for ' + str(k)\
+                              + ': tokens ' + str(j) + ' and ' + str(v[i+1])
+
+                        raise Exception(msg)
                     
-                    if j > len(self.corpus):
+                    if j > len(bcorpus.corpus):
+                        
                         print v[-30:]
-                        raise Exception('invalid tokenization for ' + str(k)
-                                        + ': ' + str(j) + ' is out of range ('
-                                        + str(len(self.corpus)) + ')')
+
+                        msg = 'invalid tokenization for ' + str(k)\
+                              + ': ' + str(j) + ' is out of range ('\
+                              + str(len(bcorpus.corpus)) + ')'
+                        
+                        raise Exception(msg)
 
                     #TODO: Define a proper exception
 
         return True
 
 
-
-
-    def dump(self, filename):
-
-        with open(filename, 'wb') as f:
-            pickle.dump(self, f)
-
-
-    def dumpz(self, filename):
-
-        f = bz2.BZ2File(filename, 'w')
-        try:
-            f.write(pickle.dumps(self))
-        finally:
-            f.close()
 
     
 
@@ -144,8 +207,8 @@ class Corpus(BaseCorpus):
     representation of a textual corpus.
 
     A Corpus object contains an integer representation of the text and
-    mapping objects to facilitate conversion between integer and
-    string representations of the text.
+    maps to permit conversion between integer and string
+    representations of a given term.
 
     As a subclass of BaseCorpus it includes a dictionary of
     tokenizations of the corpus and a method for viewing (without
@@ -154,15 +217,77 @@ class Corpus(BaseCorpus):
     A Corpus object also stores metadata (e.g., document names)
     associated with the available tokenizations.
 
-    corpus is a representation of the input corpus as a numpy array of
-    32-bit integer type.
+    Parameters
+    ----------
+    corpus : array-like
+        A string array representing the corpus as a sequence of atomic
+        terms.
+    tokens : dict-like with 1-D integer array-like values, optional
+        Each key in `tokens` is a name of a tokenization. Each value
+        in `tokens` is an array containing the indices marking the
+        token boundaries. A value in `tokens` is intended for use as a
+        value for the `indices_or_sections` parameter in
+        `numpy.split`. Default is `None`.
+    tokens_meta : dict-like with 1-D array-like values, optional
+        Each key in `tokens_meta` is a name of a tokenization. Each
+        value in `tokens_meta` is an array containing metadata
+        corresponding to a tokenization found in `tokens`. The
+        tokenization metadata is checked on initialization by
+        `_validate_metadata`.
 
-    terms is the indexed set of strings occurring in corpus. It is a
-    string-typed numpy array.
+    Attributes
+    ----------
+    corpus : 1-D 32-bit integer array
+        corpus is the integer representation of the input string
+        array-like value value of the corpus parameter
+    terms : 1-D string array
+        The indexed set of strings occurring in corpus. It is a
+        string-typed array.
+    terms_int : 1-D 32-bit integer array
+        A dictionary whose keys are `terms` and whose values are their
+        corresponding integers (i.e., indices in `terms`).
+    tokens : dict with 1-D numpy integer arrays as values
+        Stores the value of the `tokens` parameter. See `BaseCorpus`.
+    tokens_meta : dict with 1-D arrays as values
+        Stores the value of the `tokens_meta` parameter. Values are
+        cast as 1-D arrays.
+        
+    Methods
+    -------
 
-    terms_int is a mapping object whose keys are given by terms and
-    whose values are their corresponding integers.
-
+    view_tokens
+        Takes a name of tokenization and returns a view of the corpus
+        tokenized accordingly. The optional parameter `strings` takes
+        a boolean value: True to view string representations of terms;
+        False to view integer representations of terms. Default is
+        `False`.
+    extract_terms
+        Static method. Takes an array-like object and returns an
+        indexed set of the elements in the object as a 1-D numpy
+        array.
+    validate_tokens
+        Static method. Takes a BaseCorpus-like object and verifies
+        that the tokenizations are sorted and in range.
+    _validate_meta
+        Verifies that the keys in `tokens_meta` are also in `tokens`;
+        and that array lengths in `tokens_meta` do not exceed those in
+        `tokens`. See the `tokens_meta` parameter.
+    gen_lexicon
+        Returns a copy of itself but with `corpus`, `tokens`, and
+        `tokens_meta` set to None. Occasionally, the only information
+        needed from the Corpus object is the mapping between string
+        and integer representations of terms; this provides a smaller
+        version of the corpus object for such situations.
+    save
+        Takes a filename and saves the data contained in a Corpus
+        object to a `npy` file using `numpy.savez`.
+    load
+        Static method. Takes a filename, loads the file data into a
+        Corpus object and returns the object
+    
+    See Also
+    --------
+    BaseCorpus
 
     Examples
     --------
@@ -197,7 +322,6 @@ class Corpus(BaseCorpus):
 
     >>> c.tokens_meta['sentences'][1]
     'Vidi'
-
     
     """
     
@@ -215,67 +339,163 @@ class Corpus(BaseCorpus):
             np.asarray([self.terms_int[term]
                         for term in self.corpus], dtype=np.int32)
 
+
         self.tokens_meta = tokens_meta
         
         # cast tokens_meta values as numpy arrays
         for k,v in self.tokens_meta.iteritems():
             self.tokens_meta[k] = np.asarray(v)
 
+        self._validate_meta()
 
+
+
+
+    def _validate_meta(self):
+        """
+        Verifies that the keys in `tokens_meta` are also in `tokens`;
+        and that array lengths in `tokens_meta` do not exceed those in
+        `tokens`.
+
+        Parameters
+        ----------
+        None
+
+        Returns
+        -------
+        True
+
+        Raises
+        ------
+        TODO
+
+        See Also
+        --------
+        Corpus.
+        """
+        #TODO proper exceptions and messages
+        for k in self.tokens_meta:
+
+            if k not in self.tokens:
+
+                raise Exception(str(k) + ' is not a tokenization type')
+
+            if self.tokens_meta[k].shape[0] > self.tokens[k].shape[0]:
+
+                raise Exception('Metadata mismatch for ' + str(k))
+
+        return True
+            
 
 
 
     def view_tokens(self, name, strings=False):
         """
-        Extends BaseCorpus.view_tokens
+        Displays a tokenization of the corpus.
 
-        If strings == True, the terms are returned as their string
-        representations.
+        Parameters
+        ----------
+        name : an immutable
+           The name of a tokenization in `tokens`.
+        strings : Boolean, optional
+            If True, string representations of terms are returned.
+            Otherwise, integer representations are returned. Default
+            is `False`.
 
-        If strings == False, the terms are returned as their integer
-        representations.
+        Returns
+        -------
+        A tokenized view of `corpus`.
+
+        See Also
+        --------
+        Corpus
+        BaseCorpus
         """
         
         token_list = super(Corpus, self).view_tokens(name)
 
-        if len(token_list) > 0:
+        if strings:
 
-            if strings:
+            for i,token in enumerate(token_list):
 
-                if np.isscalar(token_list[0]):
-
-                    token_list = [self.terms[t] for t in token_list]
-
-                    token_list = np.array(token_list, dtype=np.str_)
-
-                else:
+                token_str = [self.terms[t] for t in token]
                     
-                    for i,token in enumerate(token_list):
-
-                        token_str = [self.terms[t] for t in token]
-                    
-                        token_list[i] = np.array(token_str, dtype=np.str_)
+                token_list[i] = np.array(token_str, dtype=np.str_)
             
-
         return token_list
-
-
 
 
 
 
     def gen_lexicon(self):
         """
-        Create a corpus object that contains only the terms (as
-        integers and as strings) but not the corpus itself
+        Returns a copy of itself but with `corpus`, `tokens`, and
+        `tokens_meta` set to None.
+        
+        See Corpus.
         """
         c = Corpus([])
+        c.corpus = None
+        c.tokens = None
+        c.tokens_meta = None
         c.terms = self.terms
         c.terms_int = self.terms_int
 
         return c
-    
 
+
+    @staticmethd
+    def load(filename):
+        """
+        Loads data into a Corpus object that has been stored using
+        `save`.
+        
+        Parameters
+        ----------
+        filename : str-like or file-like object
+            Designates the file to read. If `filename` is a string
+            ending in `.gz`, the file is first gunzipped. See
+            `numpy.load` for further details.
+
+        Returns
+        -------
+        A Corpus object storing the data found in `filename`.
+
+        See Also
+        --------
+        Corpus
+        Corpus.save
+        numpy.load
+        """
+        
+        pass
+
+
+    def save(filename):
+        """
+        Saves data from a Corpus object as an `npz` file.
+        
+        Parameters
+        ----------
+        filename : str-like or file-like object
+            Designates the file to which to save data. See
+            `numpy.savez` for further details.
+
+        Returns
+        -------
+        None
+
+        See Also
+        --------
+        Corpus
+        Corpus.load
+        numpy.savez
+        """
+        
+        pass
+
+
+    #Legacy
     def dump(self, filename, terms_only=False):
 
         if terms_only:
@@ -285,7 +505,7 @@ class Corpus(BaseCorpus):
         else:
             super(Corpus, self).dump(filename)
 
-
+    #Legacy
     def dumpz(self, filename, terms_only=False):
 
         if terms_only:
@@ -294,129 +514,5 @@ class Corpus(BaseCorpus):
 
         else:
             super(Corpus, self).dumpz(filename)
-
-
-
-
-############################
-####      TEST DATA    #####
-############################
-
-def genBaseCorpus():
-    return BaseCorpus(['cats','chase','dogs','dogs',
-                       'do','not','chase','cats'],
-                      {'sentences' : [3]})
-
-
-# def test_BaseCorpus():
-
-#     from inphosemantics.corpus.tokenizer import IepTokens
-
-#     path = 'test-data/iep/selected/corpus/plain'
-
-#     tokens = IepTokens(path)
-
-#     c = BaseCorpus(tokens.word_tokens, tokens.tokens)
-
-#     print 'First article:\n', c.view_tokens('articles')[1]
-#     print '\nFirst five paragraphs:\n', c.view_tokens('paragraphs')[:5]
-#     print '\nFirst ten sentences:\n', c.view_tokens('sentences')[:10]
-
-#     print '\nLast article:\n', c.view_tokens('articles')[-1]
-#     print '\nLast five paragraphs:\n', c.view_tokens('paragraphs')[-5:]
-#     print '\nLast ten sentences:\n', c.view_tokens('sentences')[-10:]
-
-#     return c
-
-
-# def test_integer_corpus():
-
-#     from inphosemantics.corpus.tokenizer import IepTokens
-
-#     path = 'test-data/iep/selected/corpus/plain'
-
-#     tokens = IepTokens(path)
-
-#     c = BaseCorpus(tokens.word_tokens, tokens.tokens)
-
-#     int_corpus, encoder = c.encode_corpus()
-
-#     print 'First article:\n',\
-#           int_corpus.view_tokens('articles', encoder)[1]
-#     print '\nFirst five paragraphs:\n',\
-#           int_corpus.view_tokens('paragraphs', encoder)[:5]
-#     print '\nFirst ten sentences:\n',\
-#           int_corpus.view_tokens('sentences', encoder)[:10]
-
-#     print '\nLast article:\n',\
-#           int_corpus.view_tokens('articles', encoder)[-1]
-#     print '\nLast five paragraphs:\n',\
-#           int_corpus.view_tokens('paragraphs', encoder)[-5:]
-#     print '\nLast ten sentences:\n',\
-#           int_corpus.view_tokens('sentences', encoder)[-10:]
-
-#     return int_corpus, encoder
-
-
-# def test_Corpus():
-
-#     from inphosemantics.corpus.tokenizer import IepTokens
-
-#     path = 'test-data/iep/selected/corpus/plain'
-
-#     tokens = IepTokens(path)
-
-#     c = Corpus(tokens.word_tokens, tokens.tokens,
-#                tokens.tokens_metadata)
-
-#     print 'First article:\n',\
-#           c.view_tokens('articles', True)[1]
-#     print '\nFirst five paragraphs:\n',\
-#           c.view_tokens('paragraphs', True)[:5]
-#     print '\nFirst ten sentences:\n',\
-#           c.view_tokens('sentences', True)[:10]
-
-#     print '\nLast article:\n',\
-#           c.view_tokens('articles', True)[-1]
-#     print '\nLast five paragraphs:\n',\
-#           c.view_tokens('paragraphs', True)[-5:]
-#     print '\nLast ten sentences:\n',\
-#           c.view_tokens('sentences', True)[-10:]
-
-#     print '\nSource of second article:',\
-#           c.view_metadata('articles')[2]
-
-#     return c
-
-
-# def test_Corpus_dumpz():
-
-#     from inphosemantics.corpus.tokenizer import IepTokens
-
-#     path = 'test-data/iep/selected/corpus/plain'
-#     filename = 'test-data/iep/selected/corpus/iep-selected.pickle.bz2'
-
-#     tokens = IepTokens(path)
-
-#     c = Corpus(tokens.word_tokens, tokens.tokens,
-#                tokens.tokens_metadata)
-
-#     c.dumpz(filename)
-
-
-# def test_Corpus_dumpz_plato():
-
-#     from inphosemantics.corpus.tokenizer import IepTokens
-
-#     path = 'test-data/iep/plato/corpus/plain'
-#     filename = 'test-data/iep/plato/corpus/iep-plato.pickle.bz2'
-
-#     tokens = IepTokens(path)
-
-#     c = Corpus(tokens.word_tokens, tokens.tokens,
-#                tokens.tokens_metadata)
-
-#     c.dumpz(filename)
-
 
 
