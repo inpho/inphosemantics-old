@@ -8,6 +8,10 @@ import copy
 
 from inphosemantics import *
 
+import inphosemantics
+
+import inphosemantics.util
+
 from inphosemantics.corpus import Corpus
 
 from inphosemantics.corpus.tokenizer import ArticlesTokenizer
@@ -157,6 +161,22 @@ def get_model_params(name):
     del params['model_type']
     del params['viewer_type']
     return params
+
+
+
+def get_Word2Word_csv(corpus, corpusParam, model, phrase, matrixWidth):
+    # Grab a viewer
+    viewer = InphoViewer(corpus, corpusParam, model)
+
+    # Figure out which terms will appear in the matrix
+    terms = zip(*viewer.similar_terms(phrase, True)[:100])[0]
+
+    # Create said matrix
+    similarityMatrix = viewer.simmat_terms(terms)
+
+    # Export the data!
+    return inphosemantics.util.gen_word2word(similarityMatrix.matrix, similarityMatrix.indices)
+    
 
 
 def gen_corpus_filename(corpus_name,
