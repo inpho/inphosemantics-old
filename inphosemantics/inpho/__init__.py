@@ -169,7 +169,7 @@ def get_Word2Word_csv(corpus, corpusParam, model, phrase, matrixWidth):
     viewer = InphoViewer(corpus, corpusParam, model)
 
     # Figure out which terms will appear in the matrix
-    terms = zip(*viewer.similar_terms(phrase, True)[:100])[0]
+    terms = zip(*viewer.similar_terms(phrase, True)[:matrixWidth])[0]
 
     # Create said matrix
     similarityMatrix = viewer.simmat_terms(terms)
