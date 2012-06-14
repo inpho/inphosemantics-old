@@ -72,8 +72,10 @@ def gen_word2word(matrix, labels, filename=None, comment=None):
     out = ''
 
     if comment:
-        out += comment + '\n\n'
+        out += comment
 
+    out += '\n' # First line of CSV represents title
+    
     labels = ['"' + label + '"' for label in labels]
 
     out += ' , ' + ', '.join(labels) + '\n'
