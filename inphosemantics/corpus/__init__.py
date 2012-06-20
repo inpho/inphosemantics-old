@@ -109,34 +109,34 @@ class BaseCorpus(object):
         self.terms = self.extract_terms(self.corpus,
                                         dtype=self.corpus.dtype)
 
-
         self.tok = dict()
 
-        for i,t in enumerate(tok_data):
-            
-            try:
-                # Suppose that `tok` is array-like with tuple-like
-                # elements (i.e., it has metadata)
-                indices, metadata = zip(*t)
+        if tok_data:
 
-                indices = np.asarray(indices)
-                metadata = np.asarray(metadata)
+            for i,t in enumerate(tok_data):
+                
+                try:
+                    # Suppose that `tok` is array-like with tuple-like
+                    # elements (i.e., it has metadata)
+                    indices, metadata = zip(*t)
 
-                if self._validate_metadata(indices, metadata):
-                    self.tok[tok_names[i] + '_metadata'] = metadata
+                    indices = np.asarray(indices)
+                    metadata = np.asarray(metadata)
 
-            except TypeError:
+                    if self._validate_metadata(indices, metadata):
+                        self.tok[tok_names[i] + '_metadata'] = metadata
 
-                # Suppose instead that `tok` has unsubscriptable
-                # elements (i.e., it has no metadata)
-                indices = np.asarray(t)
+                except TypeError:
+
+                    # Suppose instead that `tok` has unsubscriptable
+                    # elements (i.e., it has no metadata)
+                    indices = np.asarray(t)
 
 
-            if self._validate_indices(indices):
-                self.tok[tok_names[i] + '_indices'] = indices
+                if self._validate_indices(indices):
+                    self.tok[tok_names[i] + '_indices'] = indices
 
                 
-
 
 
 
@@ -482,7 +482,10 @@ class Corpus(BaseCorpus):
 
         if strings:
 
-            for i,token in enumerate(token_list):
+            _token_list = token_list
+            token_list = []
+
+            for i,token in enumerate(_token_list):
 
                 token_str = [self.terms[t] for t in token]
                     
@@ -492,18 +495,14 @@ class Corpus(BaseCorpus):
 
 
 
-
     def gen_lexicon(self):
         """
-        Returns a copy of itself but with `corpus`, `tokens`, and
-        `tokens_meta` set to None.
+        Returns a copy of itself but with `corpus` and `tok` set to
+        empty values.
         
         See Corpus.
         """
         c = Corpus([])
-        c.corpus = None
-        c.tokens = None
-        c.tokens_meta = None
         c.terms = self.terms
         c.terms_int = self.terms_int
 
@@ -539,6 +538,7 @@ class Corpus(BaseCorpus):
         c = Corpus([])
         c.corpus = arrays_in['corpus']
         c.terms = arrays_in['terms']
+
         c._set_terms_int()
 
         for k in arrays_in:
@@ -549,7 +549,7 @@ class Corpus(BaseCorpus):
 
 
 
-    def save(file):
+    def save(self, file):
         """
         Saves data from a Corpus object as an `npz` file.
         
@@ -603,43 +603,171 @@ class Corpus(BaseCorpus):
 
 
 class MaskedCorpus(Corpus):
-
+    """
+    """
     def __init__(self,
                  corpus,
                  tok_names=None,
                  tok_data=None,
-                 mask_terms=None,
+                 mask_terms=np.array([]),
                  fill_value=None):
 
         super(MaskedCorpus, self).__init__(corpus,
                                            tok_names=tok_names,
                                            tok_data=tok_data)
 
-        self.corpus = np.ma.MaskedArray(self.corpus)
+        self.corpus = np.ma.MaskedArray(self.corpus,
+                                        fill_value=fill_value)
 
         self.mask_terms = np.asarray(mask_terms)
 
-        # Encode mask_terms as integers
-        self.mask_terms_int = dict([(t, self.terms_int[t])
-                                       for t in mask_terms])
+        self._set_mask_terms_int()
 
+
+        # Generate mask
         mt_vals = self.mask_terms_int.values()
 
-        # nditer doesn't facilitate (in an obvious way) updating the
-        # mask; so...
-        for i,term in enumerate(self.corpus):
+        for i,term in np.ndenumerate(self.corpus):
             if term in mt_vals:
                 self.corpus[i] = np.ma.masked
 
 
 
+
+    def _set_mask_terms_int(self):
+        """
+        Map masking terms to their integer reps
+        """
+        self.mask_terms_int = dict([(t, self.terms_int[t])
+                                    for t in self.mask_terms])
+
+
+
+    def view_tokens(self, name, strings=False):
+        """
+        Displays a tokenization of the corpus.
+
+        Parameters
+        ----------
+        name : string-like
+           The name of a tokenization.
+        strings : Boolean, optional
+            If True, string representations of terms are returned.
+            Otherwise, integer representations are returned. Default
+            is `False`.
+
+        Returns
+        -------
+        A tokenized view of `corpus`.
+
+        See Also
+        --------
+        MaskedCorpus
+        Corpus
+        BaseCorpus
+        """
+        
+        token_list = super(Corpus, self).view_tokens(name)
+
+        if strings:
+
+            _token_list = token_list
+            token_list = []
+
+            for i,token in enumerate(_token_list):
+
+                token_str = [self.terms[t] for t in token.data]
+
+                print token_str
+                print token.mask
+                
+                token_list.append(np.ma.MaskedArray(token_str,
+                                                    mask=token.mask,
+                                                    dtype=np.str_))
+
+            
+        return token_list
+
+
+
     @staticmethod
     def load(file):
-        pass
+        """
+        Loads data into a MaskedCorpus object that has been stored using
+        `save`.
+        
+        Parameters
+        ----------
+        file : str-like or file-like object
+            Designates the file to read. If `file` is a string ending
+            in `.gz`, the file is first gunzipped. See `numpy.load`
+            for further details.
+
+        Returns
+        -------
+        A MaskedCorpus object storing the data found in `file`.
+
+        See Also
+        --------
+        MaskedCorpus
+        MaskedCorpus.save
+        numpy.load
+        """
+
+        arrays_in = np.load(file)
+
+        c = MaskedCorpus([])
+        c.corpus = np.ma.MaskedArray(arrays_in['corpus_data'],
+                                     mask=arrays_in['corpus_mask'],
+                                     fill_value=arrays_in['fill_value'])
+        
+        c.terms = arrays_in['terms']
+        c._set_terms_int()
+
+        c.mask_terms = arrays_in['mask_terms']
+        c._set_mask_terms_int()
+
+        for k in arrays_in:
+            if k.endswith('_indices') or k.endswith('_metadata'):
+                c.tok[k] = arrays_in[k]
+
+        return c
 
 
-    def save(file):
-        pass
+
+    def save(self, file):
+        """
+        Saves data from a MaskedCorpus object as an `npz` file.
+        
+        Parameters
+        ----------
+        file : str-like or file-like object
+            Designates the file to which to save data. See
+            `numpy.savez` for further details.
+
+        Returns
+        -------
+        None
+
+        See Also
+        --------
+        MaskedCorpus
+        MaskedCorpus.load
+        numpy.savez
+        """
+
+        arrays_out = dict(**self.tok)
+
+        arrays_out['corpus_data'] = self.corpus.data
+        arrays_out['corpus_mask'] = self.corpus.mask
+        arrays_out['fill_value'] = self.corpus.fill_value
+
+        arrays_out['terms'] = self.terms
+
+        arrays_out['mask_terms'] = self.mask_terms
+
+
+        np.savez(file, **arrays_out)
         
 
 
@@ -658,5 +786,24 @@ def test():
                      tok_names=tok_names,
                      tok_data=tok_data,
                      mask_terms=mask_terms)
+
+
+    from tempfile import TemporaryFile
+    tmp = TemporaryFile()
+    c.save(tmp)
+
+    tmp.seek(0)
+
+    c_in = MaskedCorpus.load(tmp)
+
+    print 'corpus:', c_in.corpus
+    print 'data:', c_in.corpus.data
+    print 'mask:', c_in.corpus.mask
+    print 'fill value:', c_in.corpus.fill_value
+    print 'tokenizations:', c_in.tok
+    print 'terms', c_in.terms
+    print 'terms str->int', c_in.terms_int
+    print 'mask terms', c_in.mask_terms
+    print 'mask terms str->int', c_in.mask_terms_int
     
-    return c.corpus
+    return c_in
