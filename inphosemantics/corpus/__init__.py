@@ -2,7 +2,6 @@ import numpy as np
 
 __all__ = ['BaseCorpus', 'Corpus', 'MaskedCorpus']
 
-
 class BaseCorpus(object):
     """
     A BaseCorpus object stores a corpus along with its tokenizations
@@ -251,7 +250,8 @@ class BaseCorpus(object):
 
         # If the final token break is the end of the corpus, remove
         # the trailing empty array produced by np.split
-        if self.tok[k][-1] == len(self.corpus):
+        if self.tok[k][-1] == self.corpus.shape[0]:
+
             del tokens[-1]
                 
         return tokens
@@ -481,15 +481,16 @@ class Corpus(BaseCorpus):
 
         if strings:
 
-            _token_list = token_list
-            token_list = []
+            token_list_ = []
 
-            for i,token in enumerate(_token_list):
+            for i,token in enumerate(token_list):
 
                 token_str = [self.terms[t] for t in token]
-                    
-                token_list[i] = np.array(token_str, dtype=np.str_)
-            
+
+                token_list_.append(np.array(token_str))
+
+            token_list = token_list_
+
         return token_list
 
 
@@ -689,6 +690,10 @@ class MaskedCorpus(Corpus):
         
         token_list = super(Corpus, self).view_tokens(name)
 
+        #Necessary because np.split returns not masked arrays but
+        #ndarrays if the section has no elements
+        token_list = [np.ma.asarray(token) for token in token_list]
+
         if strings:
 
             token_list_ = []
@@ -791,8 +796,8 @@ class MaskedCorpus(Corpus):
 
 def mask_sing_occ(corp_obj):
     """
-    Takes a MaskedCorpus object and masks all terms that
-    occur only once in the corpus.
+    Takes a MaskedCorpus object and masks all terms that occur only
+    once in the corpus. The operation is in-place.
     """
     for term in corp_obj.terms:
 
@@ -802,13 +807,35 @@ def mask_sing_occ(corp_obj):
 
         if occ == 1:
 
-            c.mask_term(term)
-
-    return corp_obj
+            corp_obj.mask_term(term)
 
 
 
-def test():
+def mask_from_stoplist(corp_obj, stoplist):
+    """
+    Takes a MaskedCorpus object and masks all terms that occur in the
+    stoplist. The operation is in-place.
+    """
+    for term in stoplist:
+
+        if term in corp_obj.terms:
+            
+            corp_obj.mask_term(term)
+
+
+
+def mask_from_golist(corp_obj, golist):
+    """
+    Takes a MaskedCorpus object and masks all terms that do not occur
+    in the golist. The operation is in-place.
+    """
+    mask_from_stoplist(corp_obj, golist)
+
+    corp_obj.mask = np.logical_not(corp_obj.mask)
+    
+
+
+def test_masked_corpus_1():
 
     text = ['I', 'came', 'I', 'saw', 'I', 'conquered']
     tok_names = ['sentences']
@@ -843,3 +870,110 @@ def test():
 
     
     return c_in
+
+
+
+import tokenizer
+
+def tokenize_test_data():
+
+
+    path = 'test-data/iep/selected/corpus/plain'
+
+    tokens = tokenizer.ArticlesTokenizer(path)
+
+    terms = tokens.word_tokens
+
+    tok_names = ['articles', 'paragraphs', 'sentences']
+
+    tok_articles = zip(tokens.articles,
+                       tokens.tokens_metadata['articles'])
+        
+    tok_paragraphs = tokens.paragraphs
+                     
+    tok_sentences = tokens.sentences
+
+    tok_data = [tok_articles, tok_paragraphs, tok_sentences]
+
+
+    return terms, tok_names, tok_data
+
+
+def load_test_stoplist():
+
+    filename = 'test-data/stoplists/stoplist-nltk-english.txt'
+
+    with open(filename, 'r') as f:
+        stoplist = f.read().split('\n')
+
+    stoplist = [word for word in stoplist if word]
+
+    return stoplist
+
+
+
+def test_corpus():
+
+    terms, tok_names, tok_data = tokenize_test_data()
+
+    c = Corpus(terms,
+               tok_names=tok_names,
+               tok_data=tok_data)
+
+    print 'First article:\n',\
+          c.view_tokens('articles', True)[1]
+    print '\nFirst five paragraphs:\n',\
+          c.view_tokens('paragraphs', True)[:5]
+    print '\nFirst ten sentences:\n',\
+          c.view_tokens('sentences', True)[:10]
+
+    print '\nLast article:\n',\
+          c.view_tokens('articles', True)[-1]
+    print '\nLast five paragraphs:\n',\
+          c.view_tokens('paragraphs', True)[-5:]
+    print '\nLast ten sentences:\n',\
+          c.view_tokens('sentences', True)[-10:]
+
+    print '\nSource of second article:',\
+          c.view_metadata('articles')[2]
+
+    return c
+
+
+
+
+
+
+
+def test_masked_corpus_2():
+
+    terms, tok_names, tok_data = tokenize_test_data()
+
+    c = MaskedCorpus(terms,
+                     tok_names=tok_names,
+                     tok_data=tok_data)
+
+    stoplist = load_test_stoplist()
+
+    mask_sing_occ(c)
+
+    mask_from_stoplist(c, stoplist)
+
+    print 'First article:\n',\
+          c.view_tokens('articles', True)[1]
+    print '\nFirst five paragraphs:\n',\
+          c.view_tokens('paragraphs', True)[:5]
+    print '\nFirst ten sentences:\n',\
+          c.view_tokens('sentences', True)[:10]
+
+    print '\nLast article:\n',\
+          c.view_tokens('articles', True)[-1]
+    print '\nLast five paragraphs:\n',\
+          c.view_tokens('paragraphs', True)[-5:]
+    print '\nLast ten sentences:\n',\
+          c.view_tokens('sentences', True)[-10:]
+
+    print '\nSource of second article:',\
+          c.view_metadata('articles')[2]
+
+    return c
