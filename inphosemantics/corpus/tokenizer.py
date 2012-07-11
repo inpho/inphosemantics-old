@@ -119,33 +119,34 @@ def rehyph(sent):
 #                 Corpus-specific tokenizing classes
 ######################################################################
 
-class ArticlesTokenizer(object):
 
+class ArticlesTokenizer(object):
+    """
+    """
     def __init__(self, path):
 
         self.path = path
-        self.word_tokens = []
-        self.articles_meta = None
-        self.articles, self.paragraphs, self.sentences =\
-            self._compute_tokens()
+        self.terms = []
+        self.tok_names = ['articles', 'paragraphs', 'sentences']
+
+        self.tok_data = None
+        self._compute_tokens()
+    
 
 
     def _compute_tokens(self):
 
-        articles, metadata = textfile_tokenize(self.path)
-
-        self.articles_meta = metadata
+        articles, articles_metadata = textfile_tokenize(self.path)
 
         article_tokens = []
         paragraph_tokens = []
         sentence_spans = []
 
-        #TODO: Write this loop, etc in proper recursive form.
-
         print 'Computing article and paragraph tokens'
+
         for i,article in enumerate(articles):
 
-            print 'Processing article in', self.articles_meta[i]
+            print 'Processing article in', articles_metadata[i]
 
             paragraphs = paragraph_tokenize(article)
             
@@ -153,11 +154,11 @@ class ArticlesTokenizer(object):
                 sentences = sentence_tokenize(paragraph)
 
                 for sentence in sentences:
-                    word_tokens = word_tokenize(sentence)
+                    terms = word_tokenize(sentence)
 
-                    self.word_tokens.extend(word_tokens)
+                    self.terms.extend(terms)
                     
-                    sentence_spans.append(len(word_tokens))
+                    sentence_spans.append(len(terms))
 
                 paragraph_tokens.append(sum(sentence_spans))
                     
@@ -173,46 +174,28 @@ class ArticlesTokenizer(object):
 
 
         while (article_tokens != []
-               and article_tokens[-1] == len(self.word_tokens)):
+               and article_tokens[-1] == len(self.terms)):
+            
             article_tokens.pop()
 
+
         while (paragraph_tokens != []
-               and paragraph_tokens[-1] == len(self.word_tokens)):
+               and paragraph_tokens[-1] == len(self.terms)):
+
             paragraph_tokens.pop()
 
+
         while (sentence_tokens != []
-               and sentence_tokens[-1] == len(self.word_tokens)):
+               and sentence_tokens[-1] == len(self.terms)):
+
             sentence_tokens.pop()
 
 
-        return article_tokens, paragraph_tokens,\
-               sentence_tokens
+        article_tokens = zip(article_tokens, articles_metadata)
+
+        self.tok_data = [article_tokens, paragraph_tokens, sentence_tokens]
 
 
-    @property
-    def tokens_dict(self):
-
-        d = dict(articles = self.articles,
-                 paragraphs = self.paragraphs,
-                 sentences = self.sentences)
-
-        return d
-
-    @property
-    def tokens_metadata(self):
-
-        d = dict(articles = self.articles_meta,
-                 paragraphs = None,
-                 sentences = None)
-
-        return d
-
-
-class IepTokens(ArticlesTokenizer):
-    pass
-
-class SepTokens(ArticlesTokenizer):
-    pass
 
 
 
@@ -246,17 +229,20 @@ def test_tokenizers():
         print ', '.join(word_tokenize(sent)), '\n'
 
 
-def test_IepTokens():
 
-    path = 'test-data/iep/selected/corpus/plain'
+# TODO: Update this test
 
-    tokens = IepTokens(path)
+# def test_IepTokens():
 
-    print 'Article breaks:\n', tokens.articles
-    print '\nParagraph breaks:\n', tokens.paragraphs
-    print '\nSentence breaks:\n', tokens.sentences
+#     path = 'test-data/iep/selected/corpus/plain'
 
-    return tokens
+#     tokens = IepTokens(path)
+
+#     print 'Article breaks:\n', tokens.articles
+#     print '\nParagraph breaks:\n', tokens.paragraphs
+#     print '\nSentence breaks:\n', tokens.sentences
+
+#     return tokens
 
 
 
