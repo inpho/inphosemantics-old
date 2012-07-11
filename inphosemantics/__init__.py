@@ -155,6 +155,8 @@ def load_matrix(filename):
 
     # The slice [()] is for the cases where np.save has stored a
     # sparse matrix in a zero-dimensional array
+    print 'Loading matrix from \n'\
+          '  ', filename
 
     return np.load(filename)[()]
 

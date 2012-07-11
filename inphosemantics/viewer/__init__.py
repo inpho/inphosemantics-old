@@ -26,8 +26,6 @@ class Viewer(object):
 
         elif corpus_filename:
             
-            print 'Loading corpus from\n'\
-                  '  ', corpus_filename
             self.corpus = load_cPicklez(corpus_filename)
 
         else:
@@ -61,8 +59,7 @@ class Viewer(object):
         elif matrix_filename:
             
             self.model = model_type()
-            print 'Loading matrix from\n'\
-                  '  ', matrix_filename
+
             self.model.load_matrix(matrix_filename)
 
         else:
