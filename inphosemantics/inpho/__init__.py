@@ -319,11 +319,8 @@ class InphoTrainer(object):
         corpus_filename =\
             gen_corpus_filename(corpus_name, corpus_param)
 
-        print 'Loading corpus from\n'\
-              '  ', corpus_filename
         
-        self.corpus = load_picklez(corpus_filename)
-
+        self.corpus = load_cPicklez(corpus_filename)
 
 
         self.matrix_filename =\

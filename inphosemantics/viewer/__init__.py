@@ -1,6 +1,6 @@
 import numpy as np
 
-from inphosemantics import load_picklez
+from inphosemantics import load_cPicklez
 
 
 #TODO: Add term_types parameter and instantiate an empty corpus object
@@ -28,7 +28,7 @@ class Viewer(object):
             
             print 'Loading corpus from\n'\
                   '  ', corpus_filename
-            self.corpus = load_picklez(corpus_filename)
+            self.corpus = load_cPicklez(corpus_filename)
 
         else:
             raise Exception("Neither a corpus nor a "
