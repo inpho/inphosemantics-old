@@ -165,6 +165,11 @@ def get_model_params(name):
 
 
 def get_Word2Word_csv(corpus, corpusParam, model, phrase, matrixWidth):
+    """
+    Returns a matrix in CSV format suitable for Word2Word.
+    corpus, corpusParam, model, & phrase as literals, matrixWidth
+    as an integer.
+    """
     # Grab a viewer
     viewer = InphoViewer(corpus, corpusParam, model)
 
