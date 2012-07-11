@@ -791,7 +791,13 @@ class MaskedCorpus(Corpus):
         arrays_out['terms_mask'] = self.terms.mask
 
         np.savez(file, **arrays_out)
-        
+
+
+
+
+############################################################################
+#                         Masking functions                                                                                ############################################################################
+
 
 
 def mask_sing_occ(corp_obj):
@@ -835,6 +841,13 @@ def mask_from_golist(corp_obj, golist):
     
 
 
+
+#############################################################################
+#                               Tests
+#############################################################################
+
+
+
 def test_masked_corpus_1():
 
     text = ['I', 'came', 'I', 'saw', 'I', 'conquered']
@@ -875,28 +888,39 @@ def test_masked_corpus_1():
 
 import tokenizer
 
-def tokenize_test_data():
+# def tokenize_test_data():
 
+
+#     path = 'test-data/iep/selected/corpus/plain'
+
+#     tokens = tokenizer.ArticlesTokenizer(path)
+
+#     terms = tokens.terms
+
+#     tok_names = ['articles', 'paragraphs', 'sentences']
+
+#     tok_articles = zip(tokens.articles,
+#                        tokens.tokens_metadata['articles'])
+        
+#     tok_paragraphs = tokens.paragraphs
+                     
+#     tok_sentences = tokens.sentences
+
+#     tok_data = [tok_articles, tok_paragraphs, tok_sentences]
+
+
+#     return terms, tok_names, tok_data
+
+
+def tokenize_test_data():
 
     path = 'test-data/iep/selected/corpus/plain'
 
     tokens = tokenizer.ArticlesTokenizer(path)
 
-    terms = tokens.word_tokens
-
-    tok_names = ['articles', 'paragraphs', 'sentences']
-
-    tok_articles = zip(tokens.articles,
-                       tokens.tokens_metadata['articles'])
-        
-    tok_paragraphs = tokens.paragraphs
-                     
-    tok_sentences = tokens.sentences
-
-    tok_data = [tok_articles, tok_paragraphs, tok_sentences]
+    return (tokens.terms, tokens.tok_names, tokens.tok_data)
 
 
-    return terms, tok_names, tok_data
 
 
 def load_test_stoplist():
