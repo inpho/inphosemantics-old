@@ -2,6 +2,7 @@ import os
 import tempfile
 import shutil
 import pickle
+import cPickle
 import bz2
 
 import numpy as np
@@ -12,9 +13,32 @@ import numpy as np
 
 def load_picklez(filename):
     """
-    Takes a filename and loads it as though it were a python pickle.
-    If the file ends in '.bz2', tries to decompress it first.
+    load_picklez takes a filename and loads it as though it were
+    a python pickle. If the file ends in '.bz2', attempts are made first
+    to decompress it.
+    
+    Parameters
+    ----------
+    filename : String
+        String indicating the path to the corpus file.
+        (eg: '/var/data/abraham-lincoln.bz2').
+
+    Returns
+    -------
+    unserialized Python object. See Python pickles.
+        (http://docs.python.org/library/pickle.html)
+
+    Examples
+    --------
+    
+    >> inphosemantics.load_picklez('/var/data/abraham-lincoln.bz2')
+    <president at 0x0001861>
+    
     """
+    
+    print 'Loading corpus from \n'\
+          '  ', filename
+    
     if filename.endswith('.bz2'):
 
         f = bz2.BZ2File(filename, 'r')
@@ -26,6 +50,50 @@ def load_picklez(filename):
     else:
         with open(filename, 'rb') as f:
             return pickle.load(f)
+
+
+def load_cPicklez(filename):
+    """
+    load_cPicklez takes a filename and loads it as though it were
+    a python pickle. If the file ends in '.bz2', attempts are made first
+    to decompress it. load_cPicklez is identical to load_picklez except
+    that it uses cPickle over pickle for time optimization. Caveats on
+    cPickle can be found at
+    http://docs.python.org/library/pickle.html#module-cPickle .
+    
+    Parameters
+    ----------
+    filename : String
+        String indicating the path to the corpus file.
+        (eg: '/var/data/abraham-lincoln.bz2').
+
+    Returns
+    -------
+    unserialized Python object. See Python pickles.
+        (http://docs.python.org/library/pickle.html)
+
+    Examples
+    --------
+    
+    >> inphosemantics.load_cPicklez('/var/data/abraham-lincoln.bz2')
+    <president at 0x0001861>
+    
+    """
+    
+    print 'Loading corpus from \n'\
+          '  ', filename
+    
+    if filename.endswith('.bz2'):
+
+        f = bz2.BZ2File(filename, 'r')
+        try:
+            return cPickle.loads(f.read())
+        finally:
+            f.close()
+    
+    else:
+        with open(filename, 'rb') as f:
+            return cPickle.load(f)
 
 
 
@@ -62,6 +130,28 @@ def load_picklez(filename):
 
 
 def load_matrix(filename):
+    """
+    load_matrix takes a filename and loads it as though it were numpy
+    matrix.
+    
+    Parameters
+    ----------
+    filename : String
+        String indicating the path to the corpus file.
+        (eg: '/var/data/abraham-lincoln.bz2').
+
+    Returns
+    -------
+    unserialized Python object. See Python pickles.
+        (http://docs.python.org/library/pickle.html)
+
+    Examples
+    --------
+    
+    >> inphosemantics.load_picklez('/var/data/abraham-lincoln.bz2')
+    <president at 0x0001861>
+
+    """
 
     # The slice [()] is for the cases where np.save has stored a
     # sparse matrix in a zero-dimensional array
