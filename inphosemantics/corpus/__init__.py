@@ -112,7 +112,7 @@ class BaseCorpus(object):
             for i,t in enumerate(tok_data):
                 
                 try:
-                    # Suppose that `tok` is array-like with tuple-like
+                    # Suppose that `t` is array-like with tuple-like
                     # elements (i.e., it has metadata)
                     indices, metadata = zip(*t)
 
@@ -124,7 +124,7 @@ class BaseCorpus(object):
 
                 except TypeError:
 
-                    # Suppose instead that `tok` has unsubscriptable
+                    # Suppose instead that `t` has unsubscriptable
                     # elements (i.e., it has no metadata)
                     indices = np.asarray(t)
 
@@ -187,6 +187,8 @@ class BaseCorpus(object):
                 raise Exception(msg)
 
         return True
+
+
 
 
     @staticmethod
@@ -632,8 +634,6 @@ class MaskedCorpus(Corpus):
                                          term == self.corpus)
 
 
-
-
     @property
     def masked_terms(self):
         """
@@ -643,21 +643,6 @@ class MaskedCorpus(Corpus):
         masked_terms_.mask = np.logical_not(masked_terms_.mask)
 
         return masked_terms_.compressed()
-
-
-    @property
-    def compressed_terms(self):
-        """
-        """
-        return self.terms.compressed()
-    
-
-    @property
-    def compressed_terms_int(self):
-        """
-        """
-        return dict(zip(self.compressed_terms,
-                        np.arange(self.compressed_terms.size)))
 
 
 
@@ -791,6 +776,45 @@ class MaskedCorpus(Corpus):
         arrays_out['terms_mask'] = self.terms.mask
 
         np.savez(file, **arrays_out)
+
+
+    def compressed_corpus(self):
+        """
+        Returns a Corpus object containing the data from the
+        compressed MaskedCorpus object.
+        """
+        c = Corpus([])
+
+        c.corpus = self.corpus.compressed()
+
+        c.terms = self.terms.compressed()
+
+        c.__set_terms_int()
+
+        for name in tok_names:
+
+            tokens = self.view_tokens[name]
+
+            spans = [token.shape[0] for token in tokens]
+
+            tokenization = []
+            
+            acc = 0
+
+            for span in spans:
+
+                acc += span            
+
+                tokenization.append(acc)
+
+            c.tok[name + '_indices'] = tokenization
+
+            c.tok[name + '_metadata'] = self.view_metadata(name)
+
+
+        return c
+
+
 
 
 
@@ -1001,3 +1025,21 @@ def test_masked_corpus_2():
           c.view_metadata('articles')[2]
 
     return c
+
+
+
+
+def test_compressed():
+
+    c = test_masked_corpus_2()
+
+    comp_c = c.compressed_corpus()
+
+    print 'Flat view:'
+    print [ma.data for ma in c.view_tokens('sentences', True)[:10]]
+
+    print 'Masked view:'
+    print c.view_tokens('sentences', True)[:10]
+
+    print 'Compressed view:'
+    print comp_c.view_tokens('sentences', True)[:10]
