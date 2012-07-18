@@ -1,58 +1,87 @@
-from inphosemantics.model import Model
+import multiprocessing as mp
 
-from scipy.sparse import lil_matrix
+import numpy as np
+from scipy import sparse
+
+from inphosemantics import model
 
 
-# TODO: Write a parallel algorithm for this (too slow)
 
-class TfModel(Model):
+class TfModel(model.Model):
     """
     """
-    def train(self, corpus, token_type, stoplist=None):
-        """
-        stoplist is ignored in training this type of model.
-        """
-        tokens = corpus.view_tokens(token_type)
-        shape = (len(corpus.term_types), len(tokens))
+    def train(self, corpus, tok_name):
 
-        self.matrix = lil_matrix(shape)
+        super(TfModel, self).train(corpus)
+
+
+        train_fn.n_rows = corpus.terms.shape[0]
+
+        tokens = corpus.view_tokens(tok_name)
+
+        p = mp.Pool()
+
+        columns = p.map(train_fn, tokens, 1)
+
+        p.close()
         
-        for j,token in enumerate(tokens):
-            for term in token:
-                self.matrix[term,j] += 1
-
+        self.matrix = sparse.hstack(columns)
+        
 
     def cf(self, term):
-        pass
+        """
+        """
+        row = self.matrix.tocsr()[term,:]
+        
+        return row.sum(1)[0, 0]
+
     
     def cfs(self):
         """
         """
-        pass
+        return self.matrix.tocsr().sum(1)[0, 0]
+
+
+
+def train_fn(token):
+
+    shape = (train_fn.n_rows, 1)
+
+    column = sparse.lil_matrix(shape, dtype=np.uint32)
+
+    for term in token:
+        
+        if term is not np.ma.masked:
+        
+            column[term, 0] += 1
+    
+    return column
 
 
 
 
 
+
+from inphosemantics import corpus
     
 def test_TfModel():
 
-    from inphosemantics import load_picklez, dump_matrix
+    corpus_filename = 'test-data/iep/selected/corpus/'\
+                      'iep-plato-freq1-nltk.npz'
+    
+    matrix_filename = 'test-data/iep/selected/models/'\
+                      'iep-plato-tf-word-article.npz'
 
-    corpus_filename =\
-        'test-data/iep/selected/corpus/iep-plato.pickle.bz2'
-    matrix_filename =\
-        'test-data/iep/selected/models/iep-plato-tf-word-article.npy'
-    document_type = 'articles'
+    tok_name = 'articles'
 
-    corpus = load_picklez(corpus_filename)
+    c = corpus.MaskedCorpus.load(corpus_filename)
 
-    model = TfModel()
+    m = TfModel()
 
-    model.train(corpus, 'articles')
+    m.train(c, tok_name)
 
-    model.dump_matrix(matrix_filename)
+    m.save(matrix_filename)
 
-    model.load_matrix(matrix_filename)
+    m = model.Model.load(matrix_filename)
 
-    return corpus, model, document_type
+    return c, m, tok_name
