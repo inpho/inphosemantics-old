@@ -30,6 +30,9 @@ class Model(object):
         Model.save
         numpy.load
         """
+        print 'Loading matrix from', file
+
+        
         # The slice [()] is for the cases where np.save has stored a
         # sparse matrix in a zero-dimensional array
 
@@ -56,7 +59,9 @@ class Model(object):
         Model.load
         numpy.savez
         """
-        np.savez(file, matrix=self.matrix)
+        print 'Saving matrix as', file
+        
+        np.save(file, self.matrix)
 
 
         

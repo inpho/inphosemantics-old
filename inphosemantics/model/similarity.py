@@ -34,6 +34,9 @@ def row_fn(i):
 
 def similar_rows(row, matrix, filter_nan=False):
 
+    if sparse.issparse(matrix):
+        matrix = matrix.tocsr()
+
     row_fn.v = matrix[row,:]
     if sparse.issparse(row_fn.v):
         row_fn.v = np.squeeze(row_fn.v.toarray())
