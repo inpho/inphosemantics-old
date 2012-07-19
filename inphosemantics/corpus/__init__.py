@@ -132,10 +132,24 @@ class BaseCorpus(object):
                 if self._validate_indices(indices):
                     self.tok[tok_names[i] + '_indices'] = indices
 
+
                 
+    @property
+    def tok_names(self):
+        """
+        Returns a list of names of the available tokenizations.
+        """
+        names = []
+        
+        for t in self.tok:
 
+            if t.endswith('_indices'):
+                
+                names.append(t[:-8])
 
-
+        return names
+        
+        
     def __getitem__(self, i):
 
         return self.corpus[i]
@@ -279,7 +293,12 @@ class BaseCorpus(object):
         BaseCorpus
         """
         k = name + '_metadata'
-        return self.tok[k]
+
+        if k in self.tok:
+
+            return self.tok[k]
+        
+        return None
     
 
 
@@ -783,21 +802,21 @@ class MaskedCorpus(Corpus):
         Returns a Corpus object containing the data from the
         compressed MaskedCorpus object.
         """
-        c = Corpus([])
+        corpus = [self.terms[term] for term in self.corpus.compressed()]
 
-        c.corpus = self.corpus.compressed()
+        tok_names = self.tok_names
 
-        c.terms = self.terms.compressed()
+        tok_data = []
 
-        c.__set_terms_int()
+        for name in self.tok_names:
 
-        for name in tok_names:
+            tokens = self.view_tokens(name)
 
-            tokens = self.view_tokens[name]
+            meta = self.view_metadata(name)
+            
+            spans = [token.compressed().shape[0] for token in tokens]
 
-            spans = [token.shape[0] for token in tokens]
-
-            tokenization = []
+            indices = []
             
             acc = 0
 
@@ -805,14 +824,22 @@ class MaskedCorpus(Corpus):
 
                 acc += span            
 
-                tokenization.append(acc)
+                indices.append(acc)
 
-            c.tok[name + '_indices'] = tokenization
+            if meta == None:
 
-            c.tok[name + '_metadata'] = self.view_metadata(name)
+                tok_data.append(indices)
+
+            else:
+
+                tok_data.append(zip(indices, meta))
 
 
-        return c
+
+        return Corpus(corpus,
+                      tok_names=tok_names,
+                      tok_data=tok_data)
+
 
 
 
@@ -911,29 +938,6 @@ def test_masked_corpus_1():
 
 
 import tokenizer
-
-# def tokenize_test_data():
-
-
-#     path = 'test-data/iep/selected/corpus/plain'
-
-#     tokens = tokenizer.ArticlesTokenizer(path)
-
-#     terms = tokens.terms
-
-#     tok_names = ['articles', 'paragraphs', 'sentences']
-
-#     tok_articles = zip(tokens.articles,
-#                        tokens.tokens_metadata['articles'])
-        
-#     tok_paragraphs = tokens.paragraphs
-                     
-#     tok_sentences = tokens.sentences
-
-#     tok_data = [tok_articles, tok_paragraphs, tok_sentences]
-
-
-#     return terms, tok_names, tok_data
 
 
 def tokenize_test_data():
@@ -1035,11 +1039,14 @@ def test_compressed():
 
     comp_c = c.compressed_corpus()
 
-    print 'Flat view:'
-    print [ma.data for ma in c.view_tokens('sentences', True)[:10]]
+    for i in xrange(10):
 
-    print 'Masked view:'
-    print c.view_tokens('sentences', True)[:10]
+        print '\nFlat view:'
+        print 'Token type', type(c.view_tokens('sentences', True)[i])
+        print [str(ma.data) for ma in c.view_tokens('sentences', True)[i]]
 
-    print 'Compressed view:'
-    print comp_c.view_tokens('sentences', True)[:10]
+        print '\nMasked view:'
+        print c.view_tokens('sentences', True)[i]
+
+        print '\nCompressed view:'
+        print comp_c.view_tokens('sentences', True)[i]
