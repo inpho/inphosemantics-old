@@ -1,7 +1,7 @@
 import numpy as np
 
 from inphosemantics import load_cPicklez
-
+from inphosemantics.corpus import mask_from_stoplist
 
 #TODO: Add term_types parameter and instantiate an empty corpus object
 #with it. This will speed up many viewing tasks.
@@ -69,9 +69,12 @@ class Viewer(object):
         self.token_type = token_type
 
         if stoplist:
-            self.stoplist = self.corpus.encode_tokens_str(stoplist)
             print 'Applying stoplist to matrix'
-            self.model.filter_rows(self.stoplist)
+            
+            #self.stoplist = self.corpus.encode_tokens_str(stoplist)
+            #self.model.filter_rows(self.stoplist)
+            
+            mask_from_stoplist(self.corpus, stoplist)
 
 
 
