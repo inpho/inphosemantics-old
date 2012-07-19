@@ -244,100 +244,112 @@ def gen_matrix_filename(corpus_name,
 
 
 
-class InphoViewer(object):
+corpora = dict()
+viewers = dict()
 
-    corpora = dict()
+
+def get_viewers():
+    """
+    Returns
+    -------
+    a list of all currently available viewers
+    """
+    return viewers.values()
     
 
-##    def __new__(cls,
-##                corpus_name,
-##                corpus_param,
-##                model_name,
-##                term_types_only=False,
-##                **_model_params):
 
-    def fetch(self,
-              corpus_name,
-              corpus_param,
-              model_name,
-              term_types_only=False,
-              **_model_params):
-        """
-        Parameters
-        ----------
-        corpus_name : String
-            The name of the corpus to be loaded.
-        corpus_param :
-        model_name :
-        term_types :
-        _model_params :
+
+def get_viewer(corpus_name,
+               corpus_param,
+               model_name,
+               term_types_only=False,
+               **_model_params):
+    """
+    Parameters
+    ----------
+    corpus_name : String
+        The name of the corpus to be loaded.
+    corpus_param :
+    model_name :
+    term_types :
+    _model_params :
+
+    Returns
+    -------
+    Instance of inphosemantics.viewer carrying a more specific
+    class type matching that provided as the model_name.
+    """
+
+    ## Fetch the viewer classname (type)
+    viewer_type = model_dict[model_name]['viewer_type']
+
+
+    ## If one already exists, just use it
+    if viewer_type in viewers:
+        return viewers[viewer_type]
+
+    model_params = get_model_params(model_name)
+
+    ## Join together the provided model parameters
+    ## with the default model parameters
+    model_params.update(_model_params)
+
+
+    # Generate the corpus filename
+    filename = gen_corpus_filename(corpus_name,
+                            corpus_param,
+                            term_types_only=term_types_only)
+    
+                            
+    # Generate the matrix name
+    matrixname = gen_matrix_filename(corpus_name,
+                            corpus_param,
+                            model_name,
+                            model_params)
+
+
+    viewer_params = dict()
+
+
+    if corpus_name in corpora and \
+           corpus_param in corpora[corpus_name]:
+        # If we've already loaded this corpus, fetch it.
+        viewer_params['corpus'] = corpora[corpus_name][corpus_param]
+
+    else: # if 'corpus' not in viewer_params:
+        viewer_params['corpus_filename'] = filename
+        corpora[corpus_name] = dict()
+
+
+    viewer_params['matrix_filename'] = matrixname
+
+
+    if 'token_type' in model_params:
+        viewer_params['token_type'] = model_params['token_type']
         
-        Returns
-        -------
-        inphosemantics.viewer, possibly more specifically matching a viewer
-        associated with the model_name.
-        """
+
+    if 'stoplist' in model_params:
+        stoplist = merge_stoplists(model_params['stoplist'])
+        viewer_params['stoplist'] = stoplist
 
 
-        # Fetch the viewer classname (type)
-        viewer_type = model_dict[model_name]['viewer_type']
-
-        model_params = get_model_params(model_name)
-
-        # Join together the provided model parameters
-        # with the default model parameters
-        model_params.update(_model_params)
-
-        # Generate the corpus filename
-        filename = gen_corpus_filename(corpus_name,
-                                corpus_param,
-                                term_types_only=term_types_only)
-
-        # Generate the matrix name
-        matrixname = gen_matrix_filename(corpus_name,
-                                corpus_param,
-                                model_name,
-                                model_params)
-
-        viewer_params = dict()
+    # All parameters ready:
+    # Create the Viewer
+    viewer = viewer_type(**viewer_params)
 
 
-        if corpus_name in self.corpora and \
-               corpus_param in self.corpora[corpus_name]:
-            # If we've already loaded this corpus, fetch it.
-            viewer_params['corpus'] = self.corpora[corpus_name][corpus_param]
-        else: # if 'corpus' not in viewer_params:
-            viewer_params['corpus_filename'] = filename
-            self.corpora[corpus_name] = dict()
-            self.corpora[corpus_name]
-            
-        viewer_params['matrix_filename'] = matrixname
-            
-
-        if 'token_type' in model_params:
-            viewer_params['token_type'] = model_params['token_type']
+    # make some more associations
+    viewer.corpus_name = corpus_name
+    viewer.corpus_param = corpus_param
+    viewer.model_name = model_name
+    viewer.term_types_only = term_types_only
 
 
-        if 'stoplist' in model_params:
+    # and then store some (maybe shared) data
+    corpora[corpus_name][corpus_param] = viewer.corpus;
+    viewers[viewer_type] = viewer
 
-            stoplist = merge_stoplists(model_params['stoplist'])
-
-            viewer_params['stoplist'] = stoplist
-
-        # All parameters ready:
-        # Create the Viewer
-        viewer = viewer_type(**viewer_params)
-
-        # make some more associations
-        viewer.corpus_name = corpus_name
-        viewer.corpus_param = corpus_param
-        viewer.model_name = model_name
-        viewer.term_types_only = term_types_only
-
-        # and then store some (maybe shared) data
-        self.corpora[corpus_name][corpus_param] = viewer.corpus;
-
-        return viewer
+    return viewer
 
 
 
