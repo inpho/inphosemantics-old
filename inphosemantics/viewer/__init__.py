@@ -28,9 +28,6 @@ class Viewer(object):
 
         elif corpus_filename:
             
-            print 'Loading corpus from\n'\
-                  '  ', corpus_filename
-
             if corpus_masked:
 
                 self.corpus = corp.MaskedCorpus.load(corpus_filename)
@@ -79,9 +76,6 @@ class Viewer(object):
 
         elif matrix_filename:
             
-            print 'Loading matrix from\n'\
-                  '  ', matrix_filename
-
             self.matrix = mod.Model.load(matrix_filename)
 
         else:

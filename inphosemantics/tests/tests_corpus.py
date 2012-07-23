@@ -5,9 +5,11 @@ from inphosemantics.corpus import tokenizer
 
 plain_path = 'inphosemantics/tests/data/iep/selected/corpus/plain'
 
-stoplist_path = 'inphosemantics/tests/data/stoplists/stoplist-nltk-english.txt'
+stoplist_path = 'inphosemantics/tests/data/stoplists/'\
+                'stoplist-nltk-english.txt'
 
-corpus_filename = 'inphosemantics/tests/data/iep/selected/corpus/iep-selected-nltk.npz'
+corpus_filename = 'inphosemantics/tests/data/iep/selected/corpus/'\
+                  'iep-selected-nltk.npz'
 
 
 

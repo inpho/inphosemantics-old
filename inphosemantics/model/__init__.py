@@ -68,5 +68,5 @@ class Model(object):
     def train(self, corpus):
         """
         """
-        print 'This training function is empty.'\
+        print 'This training function is empty. '\
               'Use a subclass of Model to train a model.'

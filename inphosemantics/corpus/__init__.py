@@ -539,7 +539,7 @@ class Corpus(BaseCorpus):
         numpy.load
         """
 
-        print 'Loading Corpus from', file
+        print 'Loading corpus from', file
 
         arrays_in = np.load(file)
 
@@ -742,7 +742,7 @@ class MaskedCorpus(Corpus):
         numpy.load
         """
 
-        print 'Loading Corpus from', file
+        print 'Loading corpus from', file
 
         arrays_in = np.load(file)
 
