@@ -10,9 +10,9 @@ class Model(object):
         
 
     @staticmethod
-    def load(file):
+    def load_matrix(file):
         """
-        Loads a matrix and row mask that has been stored using `save`.
+        Loads a matrix that has been stored using `save_matrix`.
         
         Parameters
         ----------
@@ -40,7 +40,7 @@ class Model(object):
 
 
 
-    def save(self, file):
+    def save_matrix(self, file):
         """
         Saves `matrix` from a Model object as an `npz` file.
         

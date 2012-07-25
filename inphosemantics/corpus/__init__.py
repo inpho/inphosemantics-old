@@ -765,7 +765,7 @@ class MaskedCorpus(Corpus):
 
 
 
-    def save(self, file, terms_only=False):
+    def save(self, file, terms_only=False, compressed=False):
         """
         Saves data from a MaskedCorpus object as an `npz` file.
         
@@ -788,20 +788,26 @@ class MaskedCorpus(Corpus):
         MaskedCorpus.load
         numpy.savez
         """
-        print 'Saving Corpus as', file
+        if compressed:
+
+            self.compressed_corpus().save(file, terms_only=terms_only)
+
+        else:
         
-        arrays_out = dict()
+            print 'Saving masked corpus as', file
+        
+            arrays_out = dict()
 
-        if not terms_only:
-            arrays_out.update(self.tok)
+            if not terms_only:
+                arrays_out.update(self.tok)
+                
+                arrays_out['corpus_data'] = self.corpus.data
+                arrays_out['corpus_mask'] = self.corpus.mask
 
-            arrays_out['corpus_data'] = self.corpus.data
-            arrays_out['corpus_mask'] = self.corpus.mask
+            arrays_out['terms_data'] = self.terms.data
+            arrays_out['terms_mask'] = self.terms.mask
 
-        arrays_out['terms_data'] = self.terms.data
-        arrays_out['terms_mask'] = self.terms.mask
-
-        np.savez(file, **arrays_out)
+            np.savez(file, **arrays_out)
 
 
 
@@ -811,6 +817,10 @@ class MaskedCorpus(Corpus):
         Returns a Corpus object containing the data from the
         compressed MaskedCorpus object.
         """
+
+        print 'Compressing corpus terms'
+
+        # Reconstruct string representation of corpus
         corpus = [self.terms[term] for term in self.corpus.compressed()]
 
         tok_names = self.tok_names
@@ -819,22 +829,16 @@ class MaskedCorpus(Corpus):
 
         for name in self.tok_names:
 
+            print 'Realigning tokenization:', name
+
             tokens = self.view_tokens(name)
 
             meta = self.view_metadata(name)
             
             spans = [token.compressed().shape[0] for token in tokens]
 
-            indices = []
+            indices = np.cumsum(spans)
             
-            acc = 0
-
-            for span in spans:
-
-                acc += span            
-
-                indices.append(acc)
-
             if meta == None:
 
                 tok_data.append(indices)

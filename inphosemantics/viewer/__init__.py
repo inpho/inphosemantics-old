@@ -1,7 +1,7 @@
 import numpy as np
 
-from inphosemantics import corpus as corp
-from inphosemantics import model as mod
+from inphosemantics import corpus as cps
+from inphosemantics import model
 from inphosemantics.model import similarity
 
 
@@ -9,85 +9,36 @@ from inphosemantics.model import similarity
 
 
 class Viewer(object):
+    """
 
+    
+    Notes
+    -----
+    Assume that the incoming corpus does not have a mask (i.e., has
+    already been compressed if so).
+
+    """
     def __init__(self,
                  corpus=None,
-                 corpus_filename=None,
-                 corpus_masked=None,
-                 model=None,
                  matrix=None,
-                 matrix_filename=None,
                  tok_name=None):
 
-
-        if corpus:
-            if corpus_filename:
-                raise Exception("Both a corpus and a "
-                                "corpus filename were given.")
-            self.corpus = corpus
-
-        elif corpus_filename:
-            
-            if corpus_masked:
-
-                self.corpus = corp.MaskedCorpus.load(corpus_filename)
-
-                self.corpus = self.corpus.compressed_corpus()
-
-
-            elif corpus_masked == False:
-
-                self.corpus = corp.Corpus.load(corpus_filename)
-
-            else:
-
-                raise Exception("Whether or not the corpus is masked "
-                                "needs to be specified.")
-
-
-        else:
-            raise Exception("Neither a corpus nor a "
-                            "corpus filename was given.")
-            
-
-
-
-        if model:
-            if matrix:
-                raise Exception("Both a model and a "
-                                "matrix were given.")
-            elif matrix_filename:
-                raise Exception("Both a model and a "
-                                "matrix filename were given.")
-            elif model_type:
-                raise Exception("Both a model and a "
-                                "model type were given.")
-            else:
-                self.matrix = model.matrix
-
-
-        elif matrix:
-            if matrix_filename:
-                raise Exception("Both a matrix and a "
-                                "matrix filename were given.")
-            else:
-                self.matrix = matrix
-
-
-        elif matrix_filename:
-            
-            self.matrix = mod.Model.load(matrix_filename)
-
-        else:
-            raise Exception("Neither a model, matrix nor "
-                            "matrix filename were given.")
-
-
-
+        self.corpus = corpus
+        self.matrix = matrix
         self.tok_name = tok_name
 
 
+    def load_matrix(self, filename):
 
+        self.matrix = model.Model.load_matrix(filename)
+
+
+    def load_corpus(self, filename):
+
+        self.corpus = cps.Corpus.load(filename)
+
+
+    
 
 
 def simmat_terms(viewer, term_list):

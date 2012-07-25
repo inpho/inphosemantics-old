@@ -11,6 +11,9 @@ stoplist_path = 'inphosemantics/tests/data/stoplists/'\
 corpus_filename = 'inphosemantics/tests/data/iep/selected/corpus/'\
                   'iep-selected-nltk.npz'
 
+corpus_filename_compressed = 'inphosemantics/tests/data/iep/selected/corpus/'\
+                             'iep-selected-nltk-compressed.npz'
+
 
 
 # Utilities
@@ -188,3 +191,16 @@ def test_masked_corpus_save():
 
 
 
+def test_masked_corpus_save_compressed():
+
+    terms, tok_names, tok_data = tokenize_test_corpus()
+
+    c = MaskedCorpus(terms,
+                     tok_names=tok_names,
+                     tok_data=tok_data)
+
+    stoplist = load_test_stoplist()
+
+    mask_from_stoplist(c, stoplist)
+
+    c.save(corpus_filename_compressed, compressed=True)

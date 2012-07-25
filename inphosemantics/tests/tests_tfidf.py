@@ -5,13 +5,13 @@ from inphosemantics import model
 
 
 corpus_filename = 'inphosemantics/tests/data/iep/selected/corpus/'\
-                  'iep-selected-nltk.npz'
+                  'iep-selected-nltk-compressed.npz'
 
 tf_matrix_filename = 'inphosemantics/tests/data/iep/selected/matrices/'\
-                     'iep-selected-tf-word-article.npy'
+                     'iep-selected-nltk-tf-article.npy'
 
-matrix_filename = 'inphosemantics/tests/data/iep/selected/matrices/'\
-                  'iep-selected-tfidf-word-article.npy'
+tfidf_matrix_filename = 'inphosemantics/tests/data/iep/selected/matrices/'\
+                        'iep-selected-nltk-tfidf-article.npy'
 
 tok_name = 'articles'
 
@@ -19,19 +19,17 @@ tok_name = 'articles'
 
 def test_TfIdfModel():
 
-    c = corpus.MaskedCorpus.load(corpus_filename)
-
-    c = c.compressed_corpus()
+    c = corpus.Corpus.load(corpus_filename)
 
     m = tfidf.TfIdfModel()
 
-    tf_matrix = model.Model.load(tf_matrix_filename)
+    tf_matrix = model.Model.load_matrix(tf_matrix_filename)
 
     m.train(c, tok_name, tf_matrix=tf_matrix)
 
-    m.save(matrix_filename)
+    m.save_matrix(tfidf_matrix_filename)
 
-    m = tfidf.TfIdfModel.load(matrix_filename)
+    m = tfidf.TfIdfModel.load_matrix(tfidf_matrix_filename)
 
     return c, m, tok_name
 
@@ -39,10 +37,13 @@ def test_TfIdfModel():
 
 def test_TfIdfViewer():
 
-    v = tfidfviewer.TfIdfViewer(corpus_filename=corpus_filename,
-                                corpus_masked=True,
-                                matrix_filename=matrix_filename,
-                                tok_name=tok_name)
+    v = tfidfviewer.TfIdfViewer()
+
+    v.load_corpus(corpus_filename)
+
+    v.load_matrix(tfidf_matrix_filename)
+
+    v.tok_name = tok_name
 
     return v
 
