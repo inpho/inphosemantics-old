@@ -28,11 +28,11 @@ def idf(row):
 
 def train_fn(row_index):
 
+    print 'Computing row', row_index
+
     row = train_fn.tf_matrix[row_index,:].astype('float32')
     
-    row *= idf(row)
-    
-    return row
+    return row * idf(row)
 
 
 
@@ -53,16 +53,26 @@ class TfIdfModel(model.Model):
             train_fn.tf_matrix = tf_model.matrix.tocsr()
 
 
+        del tf_matrix
+
 
         # Suppress division by zero errors
         old_settings = np.seterr(divide='ignore')
 
+        # Single-processor map for debugging
+        # rows = map(train_fn, range(train_fn.tf_matrix.shape[0]))
 
-        rows = map(train_fn, range(train_fn.tf_matrix.shape[0]))
+
+        p = mp.Pool()
+
+        rows = p.map(train_fn, range(train_fn.tf_matrix.shape[0]), 1000)
+
+        p.close()
 
 
         # Restore default handling of floating-point errors
         np.seterr(**old_settings)
 
+        print 'Updating data matrix'
 
         self.matrix = sparse.vstack(rows)

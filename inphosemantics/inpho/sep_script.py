@@ -1,8 +1,12 @@
 from inphosemantics import corpus
 from inphosemantics.corpus import tokenizer
 
+from inphosemantics import model
 from inphosemantics.model import tf
+from inphosemantics.model import tfidf
+
 from inphosemantics.viewer import tfviewer
+from inphosemantics.viewer import tfidfviewer
 
 
 
@@ -24,6 +28,8 @@ tf_filename = root + 'matrices/sep-complete-nltk-tf-articles.npy'
 tfidf_filename = root + 'matrices/sep-complete-nltk-tfidf-articles.npy'
 
 
+
+##########################################################################
 
 
 def gen_corpus():
@@ -53,6 +59,9 @@ def gen_corpus():
 
 
 
+##########################################################################
+
+
 
 def train_tf():
 
@@ -79,6 +88,36 @@ def tf_viewer():
     return v
 
 
+
+##########################################################################
+
+
+
 def train_tfidf():
 
-    pass
+    c = corpus.Corpus.load(compressed_corpus_filename)
+
+    m = tfidf.TfIdfModel()
+
+    tf_matrix = model.Model.load_matrix(tf_filename)
+
+    m.train(c, tok_name, tf_matrix=tf_matrix)
+
+    m.save_matrix(tfidf_filename)
+
+
+def tfidf_viewer():
+
+    v = tfidfviewer.TfIdfViewer()
+
+    v.load_corpus(compressed_corpus_filename)
+
+    v.load_matrix(tf_filename)
+
+    v.tok_name = tok_name
+
+    return v
+
+
+
+##########################################################################
