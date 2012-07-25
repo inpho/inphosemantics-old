@@ -9,8 +9,11 @@ from scipy import sparse
 # TODO: Fix the datatypes during conversion from sparse to dense data
 # structures. (TF matrices have floats as scalars now, for example.)
 
+# TODO: Suppress division by zero errors; be sure that it's safe to do
+# so.
+
 def norm(v):
-    return np.sum(v**2)**(1./2)
+    return np.sum(v**2)**(.5)
 
 
 def vector_cos(v,w):

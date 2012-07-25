@@ -2,11 +2,10 @@ from inphosemantics import corpus
 from inphosemantics.corpus import tokenizer
 
 from couchdb import * # experiment database
-from couchdb.mapping import TextField, IntegerField, DateTimeField
+from couchdb.mapping import * # Object Relational Mapper
 
 
 from datetime import datetime
-
 
 
 ## iep_test_plain_path
@@ -14,7 +13,11 @@ from datetime import datetime
 
 #stoplist_path = 'inphosemantics/tests/data/stoplists/stoplist-nltk-english.txt'
 
-corpus_filename = 'inphosemantics/tests/data/iep/selected/corpus/iep-selected-nltk.npz'
+corpus_filename = 'inphosemantics/tests/data/iep/selected/corpus/'\
+                  'iep-selected-nltk.npz'
+
+corpus_filename_compressed = 'inphosemantics/tests/data/iep/selected/corpus/'\
+                             'iep-selected-nltk-compressed.npz'
 
 
 
@@ -68,14 +71,12 @@ class CorpusMeta(Metadata):
     plain_path = TextField()
     raw_path   = TextField()
     stoplists  = ListField()
-
-    
-class MaskedCorpusMeta(MetaData):
-    Corpus = TextField() # contains the _id of the corpus being masked
+    isCompressed = BooleanField(default=False)
     masking_functions = ListField()
-    output_filename = TextField(default=corpus_filename)
-
-
+    short_label = TextField()
+    long_label = TextField()
+    
+    
 
 # Corpus tests
 
@@ -225,4 +226,19 @@ def test_masked_corpus_save():
     corpus.mask_from_stoplist(c, stoplist)
     
     c.save(corpus_filename)
-    
+
+
+def test_masked_corpus_save_compressed():
+
+    terms, tok_names, tok_data = tokenize_test_corpus()
+
+    c = corpus.MaskedCorpus(terms,
+                     tok_names=tok_names,
+                     tok_data=tok_data)
+
+    stoplist = load_test_stoplist()
+
+    corpus.mask_from_stoplist(c, stoplist)
+
+    c.save(corpus_filename_compressed, compressed=True)
+

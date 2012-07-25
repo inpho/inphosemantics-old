@@ -1,7 +1,7 @@
 import os
 import re
-import pickle
-import codecs
+
+import numpy as np
 
 import nltk
 
@@ -166,29 +166,26 @@ class ArticlesTokenizer(object):
 
 
         print 'Computing sentence tokens'
-        acc = 0
-        sentence_tokens = []
-        for i in sentence_spans:
-            acc += i
-            sentence_tokens.append(acc)
+        
+        sentence_tokens = np.cumsum(sentence_spans)
 
 
-        while (article_tokens != []
-               and article_tokens[-1] == len(self.terms)):
+        # while (article_tokens != []
+        #        and article_tokens[-1] == len(self.terms)):
             
-            article_tokens.pop()
+        #     article_tokens.pop()
 
 
-        while (paragraph_tokens != []
-               and paragraph_tokens[-1] == len(self.terms)):
+        # while (paragraph_tokens != []
+        #        and paragraph_tokens[-1] == len(self.terms)):
 
-            paragraph_tokens.pop()
+        #     paragraph_tokens.pop()
 
 
-        while (sentence_tokens != []
-               and sentence_tokens[-1] == len(self.terms)):
+        # while (sentence_tokens != []
+        #        and sentence_tokens[-1] == len(self.terms)):
 
-            sentence_tokens.pop()
+        #     sentence_tokens.pop()
 
 
         article_tokens = zip(article_tokens, articles_metadata)

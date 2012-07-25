@@ -4,10 +4,10 @@ from inphosemantics import corpus
 
 
 corpus_filename = 'inphosemantics/tests/data/iep/selected/corpus/'\
-                  'iep-selected-nltk.npz'
+                  'iep-selected-nltk-compressed.npz'
 
 matrix_filename = 'inphosemantics/tests/data/iep/selected/matrices/'\
-                  'iep-selected-tf-word-article.npy'
+                  'iep-selected-nltk-tf-article.npy'
 
 tok_name = 'articles'
 
@@ -15,17 +15,15 @@ tok_name = 'articles'
 
 def test_TfModel():
 
-    c = corpus.MaskedCorpus.load(corpus_filename)
-
-    c = c.compressed_corpus()
+    c = corpus.Corpus.load(corpus_filename)
 
     m = tf.TfModel()
 
     m.train(c, tok_name)
 
-    m.save(matrix_filename)
+    m.save_matrix(matrix_filename)
 
-    m = tf.TfModel.load(matrix_filename)
+    m = tf.TfModel.load_matrix(matrix_filename)
 
     return c, m, tok_name
 
@@ -33,9 +31,12 @@ def test_TfModel():
 
 def test_TfViewer():
 
-    v = tfviewer.TfViewer(corpus_filename=corpus_filename,
-                          corpus_masked=True,
-                          matrix_filename=matrix_filename,
-                          tok_name=tok_name)
+    v = tfviewer.TfViewer()
+
+    v.load_corpus(corpus_filename)
+
+    v.load_matrix(matrix_filename)
+
+    v.tok_name = tok_name
 
     return v

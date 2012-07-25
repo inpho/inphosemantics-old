@@ -12,7 +12,7 @@ class TfModel(model.Model):
     """
     def train(self, corpus, tok_name):
 
-        train_fn.n_rows = corpus.terms.shape[0]
+        print 'Viewing tokens:', tok_name
 
         tokens = corpus.view_tokens(tok_name)
 
@@ -21,8 +21,21 @@ class TfModel(model.Model):
         columns = p.map(train_fn, tokens, 1)
 
         p.close()
-        
-        self.matrix = sparse.hstack(columns)
+
+        # non-parallel map for debugging
+        # columns = map(train_fn, tokens)
+
+        print 'Updating data matrix'
+
+        shape = (corpus.terms.shape[0], len(tokens))
+
+        self.matrix = sparse.lil_matrix(shape)
+
+        for j, column in enumerate(columns):
+
+            for i, val in column.iteritems():
+
+                self.matrix[i, j] = val
         
 
 
@@ -30,14 +43,18 @@ class TfModel(model.Model):
 
 def train_fn(token):
 
-    shape = (train_fn.n_rows, 1)
+    column = dict()
 
-    column = sparse.lil_matrix(shape, dtype=np.uint32)
+    print 'Training on token', token
 
     for term in token:
-        
-        if term is not np.ma.masked:
-        
-            column[term, 0] += 1
-    
+
+        if term in column:
+
+            column[term] += 1
+
+        else:
+
+            column[term] = 1
+
     return column
