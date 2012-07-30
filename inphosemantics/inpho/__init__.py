@@ -152,20 +152,30 @@ def tf_trainer(corpus_name, masking_fns=[], tok_name='paragraphs'):
     tfModel = tf.TfModel()
     tfModel.train(sep_corpus, tok_name)
 
+
+
+    ## TODO: apply masking functions?
+
+
     
     ## Save the matrix to disk and record
     ## its existence in the database.
     matrix_dir = inpho_db['data_root']['dir'] + 'sep/complete/matrices/'
-    matrix_filename = corpus_name + '-' +\
-                      'tf'        + '-' +\
-                      tok_name + '.npy'
+    
+    matrix_filename = corpus_name + '-'
+    for fn in masking_fns:
+        matrix_filename = matrix_filename + fn + '-'
+    matrix_filename = matrix_filename + 'tf-' + tok_name + '.npy'
+
     matrix_path = matrix_dir + matrix_filename
+
+    print matrix_path
     
     tfModel.save_matrix(matrix_path)
 
-    matrix_doc = MatrixDocument(model_class=str(tf),\
-                                filename=matrix_path,\
-                                src_corpus_file=corpus_doc['filename'],\
+    matrix_doc = MatrixDocument(model_class=str(tf),
+                                filename=matrix_path,
+                                src_corpus_file=corpus_doc['filename'],
                                 tok_name=tok_name)
     
     inpho_db.save(matrix_doc)
