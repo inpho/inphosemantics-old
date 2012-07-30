@@ -8,12 +8,12 @@ corpus_filename = 'inphosemantics/tests/data/iep/selected/corpus/'\
                   'iep-selected-nltk-compressed.npz'
 
 tf_matrix_filename = 'inphosemantics/tests/data/iep/selected/matrices/'\
-                     'iep-selected-nltk-tf-article.npy'
+                     'iep-selected-nltk-tf-paragraphs.npy'
 
 tfidf_matrix_filename = 'inphosemantics/tests/data/iep/selected/matrices/'\
-                        'iep-selected-nltk-tfidf-article.npy'
+                        'iep-selected-nltk-tfidf-paragraphs.npy'
 
-tok_name = 'articles'
+tok_name = 'paragraphs'
 
 
 

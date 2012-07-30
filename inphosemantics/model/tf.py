@@ -45,7 +45,7 @@ def train_fn(token):
 
     column = dict()
 
-    print 'Training on token', token
+    # print 'Training on token', token
 
     for term in token:
 

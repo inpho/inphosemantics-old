@@ -18,14 +18,14 @@ compressed_corpus_filename = root + 'corpus/sep-complete-nltk-compressed.npz'
 
 corpus_filename = root + 'corpus/sep-complete-nltk.npz'
 
-tok_name = 'articles'
+tf_tok_name = 'paragraphs'
 
 stoplist_filename = '/var/inphosemantics/data/stoplists/'\
                     'stoplist-nltk-english.txt'
 
-tf_filename = root + 'matrices/sep-complete-nltk-tf-articles.npy'
+tf_filename = root + 'matrices/sep-complete-nltk-tf-paragraphs.npy'
 
-tfidf_filename = root + 'matrices/sep-complete-nltk-tfidf-articles.npy'
+tfidf_filename = root + 'matrices/sep-complete-nltk-tfidf-paragraphs.npy'
 
 
 
@@ -69,7 +69,7 @@ def train_tf():
 
     m = tf.TfModel()
 
-    m.train(c, tok_name)
+    m.train(c, tf_tok_name)
 
     m.save_matrix(tf_filename)
 
@@ -83,7 +83,7 @@ def tf_viewer():
 
     v.load_matrix(tf_filename)
 
-    v.tok_name = tok_name
+    v.tok_name = tf_tok_name
 
     return v
 
@@ -101,7 +101,7 @@ def train_tfidf():
 
     tf_matrix = model.Model.load_matrix(tf_filename)
 
-    m.train(c, tok_name, tf_matrix=tf_matrix)
+    m.train(c, tf_tok_name, tf_matrix=tf_matrix)
 
     m.save_matrix(tfidf_filename)
 
@@ -114,7 +114,7 @@ def tfidf_viewer():
 
     v.load_matrix(tf_filename)
 
-    v.tok_name = tok_name
+    v.tok_name = tf_tok_name
 
     return v
 
