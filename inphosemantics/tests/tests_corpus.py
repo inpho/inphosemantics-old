@@ -13,27 +13,14 @@ from datetime import datetime
 
 #stoplist_path = 'inphosemantics/tests/data/stoplists/stoplist-nltk-english.txt'
 
-corpus_filename = 'inphosemantics/tests/data/iep/selected/corpus/'\
-                  'iep-selected-nltk.npz'
-
-corpus_filename_compressed = 'inphosemantics/tests/data/iep/selected/corpus/'\
-                             'iep-selected-nltk-compressed.npz'
-
 
 
 ## experiment boilerplate
-couchServer = Server()
-db = couchServer['inphosemantics']
+couch = Server()
+database = couch['inphosemantics']
 
-
-
-## TODO: Set up this data to be fetched
-## Fetch some test data
-plain_path = db['iep_test']['plain_path']
-
-stoplist_file = db['iep_test']['stoplists']['nltk']
-
-#corpus_filename = db['iep_test'][]
+plain_path = database['iep_test']['plain_path']
+stoplist_file = database['iep_test']['stoplists']['nltk']
 
 
 ############
@@ -69,7 +56,7 @@ def load_test_stoplist():
 ## and into somewhere more neutral to the project setup.
 class Metadata(Document):
     added = DateTimeField(default=datetime.now)
-    type  = TextField()
+    type  = TextField(default="metadata")
     
 
 ## Currently represents a Corpus mapping in the CouchDB database.
@@ -81,11 +68,11 @@ class CorpusMeta(Metadata):
     plain_path = TextField()
     raw_path   = TextField()
     stoplists  = ListField(TextField)
-    isCompressed = BooleanField(default=False)
+    compressed = BooleanField(default=False)
     masking_functions = ListField(TextField)
     short_label = TextField()
     long_label = TextField()
-
+    type = TextField(default="Corpus")
     
     
 ###############
@@ -93,9 +80,10 @@ class CorpusMeta(Metadata):
 ###############
 def test_corpus():
 
+    c = None # So that c exists before the experiment.
+
     ## run the experiment
     try:
-        terms, tok_names, tok_data = tokenize_test_corpus()
         c = corpus.Corpus(terms,
                    tok_names=tok_names,
                    tok_data=tok_data)
@@ -119,7 +107,7 @@ def test_corpus():
 
     ## Catch any problems
     except:
-        pass
+        raise
 
     ## Return the result
     return c
@@ -133,33 +121,41 @@ def test_corpus():
 
 
 def test_masked_corpus_1():
-    text = ['I', 'came', 'I', 'saw', 'I', 'conquered']
-    tok_names = ['sentences']
-    tok_data = [[(2, 'Veni'), (4, 'Vidi'), (6, 'Vici')]]
-    masked_terms = ['I', 'came']
-    
-    c = corpus.MaskedCorpus(text,
-                            tok_names=tok_names,
-                            tok_data=tok_data,
-                            masked_terms=masked_terms)
-    
-    from tempfile import TemporaryFile
-    tmp = TemporaryFile()
-    c.save(tmp)
-    
-    tmp.seek(0)
-    
-    c_in = corpus.MaskedCorpus.load(tmp)
-    
-    print 'corpus:', c_in.corpus
-    print 'data:', c_in.corpus.data
-    print 'mask:', c_in.corpus.mask
-    print 'fill value:', c_in.corpus.fill_value
-    print 'tokenizations:', c_in.tok
-    print 'terms:', c_in.terms
-    print 'terms str->int:', c_in.terms_int
-    print 'masked terms:', c_in.masked_terms
-    print 'compressed_corpus:', c_in.compressed_corpus()
+
+    c = None # So that C exists before the test
+
+    ## Run the test
+    try:
+        text = ['I', 'came', 'I', 'saw', 'I', 'conquered']
+        tok_names = ['sentences']
+        tok_data = [[(2, 'Veni'), (4, 'Vidi'), (6, 'Vici')]]
+        masked_terms = ['I', 'came']
+        
+        c = corpus.MaskedCorpus(text,
+                                tok_names=tok_names,
+                                tok_data=tok_data,
+                                masked_terms=masked_terms)
+        
+        from tempfile import TemporaryFile
+        tmp = TemporaryFile()
+        c.save(tmp)
+        
+        tmp.seek(0)
+        
+        c_in = corpus.MaskedCorpus.load(tmp)
+        
+        print 'corpus:', c_in.corpus
+        print 'data:', c_in.corpus.data
+        print 'mask:', c_in.corpus.mask
+        print 'fill value:', c_in.corpus.fill_value
+        print 'tokenizations:', c_in.tok
+        print 'terms:', c_in.terms
+        print 'terms str->int:', c_in.terms_int
+        print 'masked terms:', c_in.masked_terms
+        print 'compressed_corpus:', c_in.compressed_corpus()
+
+    except:
+        raise
     
     # Return the result
     return c_in
@@ -167,37 +163,43 @@ def test_masked_corpus_1():
 
 
 
-
-
 def test_masked_corpus_2():
 
-    c = corpus.MaskedCorpus(terms,
-                     tok_names=tok_names,
-                     tok_data=tok_data)
+    c = None # So that c exists before the test
 
-    stoplist = load_test_stoplist()
+    ## Run the test
+    try:
+        
+        c = corpus.MaskedCorpus(terms,
+                                tok_names=tok_names,
+                                tok_data=tok_data)
+        
+        stoplist = load_test_stoplist()
+        
+        corpus.mask_sing_occ(c)
+        
+        corpus.mask_from_stoplist(c, stoplist)
+        
+        print 'First article:\n',\
+              c.view_tokens('articles', True)[1]
+        print '\nFirst five paragraphs:\n',\
+              c.view_tokens('paragraphs', True)[:5]
+        print '\nFirst ten sentences:\n',\
+              c.view_tokens('sentences', True)[:10]
+        
+        print '\nLast article:\n',\
+              c.view_tokens('articles', True)[-1]
+        print '\nLast five paragraphs:\n',\
+              c.view_tokens('paragraphs', True)[-5:]
+        print '\nLast ten sentences:\n',\
+              c.view_tokens('sentences', True)[-10:]
+        
+        print '\nSource of second article:',\
+              c.view_metadata('articles')[2]
 
-    corpus.mask_sing_occ(c)
-
-    corpus.mask_from_stoplist(c, stoplist)
-
-    print 'First article:\n',\
-          c.view_tokens('articles', True)[1]
-    print '\nFirst five paragraphs:\n',\
-          c.view_tokens('paragraphs', True)[:5]
-    print '\nFirst ten sentences:\n',\
-          c.view_tokens('sentences', True)[:10]
-
-    print '\nLast article:\n',\
-          c.view_tokens('articles', True)[-1]
-    print '\nLast five paragraphs:\n',\
-          c.view_tokens('paragraphs', True)[-5:]
-    print '\nLast ten sentences:\n',\
-          c.view_tokens('sentences', True)[-10:]
-
-    print '\nSource of second article:',\
-          c.view_metadata('articles')[2]
-
+    except:
+        raise
+    
     return c
 
 
@@ -224,25 +226,51 @@ def test_compressed():
 
 
 def test_masked_corpus_save():
-    c = corpus.MaskedCorpus(terms,
-                            tok_names=tok_names,
-                            tok_data=tok_data)
+
+    c = None # So that c exists before running the test.
     
-    stoplist = load_test_stoplist()
-    
-    corpus.mask_from_stoplist(c, stoplist)
-    
-    c.save(corpus_filename)
+    ## Run the test.
+    try:
+        doc = CorpusMeta(plain_path=plain_path, compressed=False) ## CouchDB entry
+
+
+        ## Use the package defaults for terms & tokens
+        c = corpus.MaskedCorpus(terms,
+                                tok_names=tok_names,
+                                tok_data=tok_data)
+
+
+        ## Fetch the stoplist and record it
+        stoplist = load_test_stoplist()
+        corpus.mask_from_stoplist(c, stoplist)
+        
+        ## Save the file
+        corpus_filename = 'inphosemantics/tests/data/iep/selected/corpus/iep-selected-nltk.npz'
+        c.save(corpus_filename)
+        
+        db.save(doc)
+        
+    except:
+        raise
+
+    return c
 
 
 def test_masked_corpus_save_compressed():
-    c = corpus.MaskedCorpus(terms,
-                     tok_names=tok_names,
-                     tok_data=tok_data)
+    c = None # So that c exists before the test runs
+    try:
+        
+        c = corpus.MaskedCorpus(terms,
+                                tok_names=tok_names,
+                                tok_data=tok_data)
+        
+        stoplist = load_test_stoplist()
+        corpus.mask_from_stoplist(c, stoplist)
+        
+        corpus_filename_compressed = 'inphosemantics/tests/data/iep/selected/corpus/iep-selected-nltk-compressed.npz'
+        c.save(corpus_filename_compressed, compressed=True)
+        
+    except:
+        raise
 
-    stoplist = load_test_stoplist()
-
-    corpus.mask_from_stoplist(c, stoplist)
-
-    c.save(corpus_filename_compressed, compressed=True)
-
+    return c
