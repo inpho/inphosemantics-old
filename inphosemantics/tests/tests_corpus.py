@@ -36,15 +36,14 @@ stoplist_file = db['iep_test']['stoplists']['nltk']
 #corpus_filename = db['iep_test'][]
 
 
+############
+## Utilities
+############
+tokens = tokenizer.ArticlesTokenizer(plain_path)
+terms = tokens.terms
+tok_names = tokens.tok_names
+tok_data = tokens.tok_data
 
-# Utilities
-
-
-def tokenize_test_corpus():
-
-    tokens = tokenizer.ArticlesTokenizer(plain_path)
-
-    return (tokens.terms, tokens.tok_names, tokens.tok_data)
 
 
 
@@ -60,26 +59,38 @@ def load_test_stoplist():
     return stoplist
 
 
+###################################
+## CouchDB Document Wrapper Classes
+###################################
 
 
+## Used to represent a general entry in our Inpho CouchDB Database.
+## Eventually the aim is to have this generalized out of tests_corpus.py
+## and into somewhere more neutral to the project setup.
 class Metadata(Document):
     added = DateTimeField(default=datetime.now)
     type  = TextField()
     
-    
+
+## Currently represents a Corpus mapping in the CouchDB database.
+## Though set up as a CouchDB object-relational mapping,
+## this object is not the actual object manipulated elsewhere.
+## In that sense, it's not true ORM, but rather intended to serve as
+## a pointer to where the Corpus data is archived on disk.
 class CorpusMeta(Metadata):
     plain_path = TextField()
     raw_path   = TextField()
-    stoplists  = ListField()
+    stoplists  = ListField(TextField)
     isCompressed = BooleanField(default=False)
-    masking_functions = ListField()
+    masking_functions = ListField(TextField)
     short_label = TextField()
     long_label = TextField()
+
     
     
-
-# Corpus tests
-
+###############
+## Corpus Tests
+###############
 def test_corpus():
 
     ## run the experiment
@@ -160,8 +171,6 @@ def test_masked_corpus_1():
 
 def test_masked_corpus_2():
 
-    terms, tok_names, tok_data = tokenize_test_corpus()
-
     c = corpus.MaskedCorpus(terms,
                      tok_names=tok_names,
                      tok_data=tok_data)
@@ -215,8 +224,6 @@ def test_compressed():
 
 
 def test_masked_corpus_save():
-    terms, tok_names, tok_data = tokenize_test_corpus()
-        
     c = corpus.MaskedCorpus(terms,
                             tok_names=tok_names,
                             tok_data=tok_data)
@@ -229,9 +236,6 @@ def test_masked_corpus_save():
 
 
 def test_masked_corpus_save_compressed():
-
-    terms, tok_names, tok_data = tokenize_test_corpus()
-
     c = corpus.MaskedCorpus(terms,
                      tok_names=tok_names,
                      tok_data=tok_data)
