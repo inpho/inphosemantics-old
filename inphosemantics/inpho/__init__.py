@@ -24,7 +24,7 @@ class MaskedCorpusDocument(FileDocument):
 
     name = TextField()
 
-    # masking_fns = ListField(TextField())
+    masking_fns = ListField(TextField())
 
     src_plain_dir = TextField()
 
@@ -143,7 +143,6 @@ def tf_trainer(corpus_name, masking_fns=[], tok_name='paragraphs'):
         ''' % corpus_name
     )
 
-
     ## Get the corpus meta data and fetch the corpus from disk.
     corpus_doc = corpus_view.rows[0].value
     sep_corpus = corpus.Corpus.load(corpus_doc['filename'])
@@ -151,16 +150,12 @@ def tf_trainer(corpus_name, masking_fns=[], tok_name='paragraphs'):
     ## Fetch the model and train it.
     tfModel = tf.TfModel()
     tfModel.train(sep_corpus, tok_name)
-
-
-
-    ## TODO: apply masking functions?
-
-
     
     ## Save the matrix to disk and record
     ## its existence in the database.
-    matrix_dir = inpho_db['data_root']['dir'] + 'sep/complete/matrices/'
+
+    matrix_dir = inpho_db['data_root']['dir'] + corpus_name + '/matrices/'
+    #matrix_dir = inpho_db['data_root']['dir'] + 'sep/complete/matrices/'
     
     matrix_filename = corpus_name + '-'
     for fn in masking_fns:
@@ -168,12 +163,10 @@ def tf_trainer(corpus_name, masking_fns=[], tok_name='paragraphs'):
     matrix_filename = matrix_filename + 'tf-' + tok_name + '.npy'
 
     matrix_path = matrix_dir + matrix_filename
-
-    print matrix_path
     
     tfModel.save_matrix(matrix_path)
 
-    matrix_doc = MatrixDocument(model_class=str(tf),
+    matrix_doc = MatrixDocument(model_class=TfModel.__name__,
                                 filename=matrix_path,
                                 src_corpus_file=corpus_doc['filename'],
                                 tok_name=tok_name)
