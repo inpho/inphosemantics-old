@@ -129,10 +129,9 @@ def test_add_comp_corpus():
 
 
 
-def tf_trainer(corpus_name, masking_fns=[], tok_name='paragraphs'):
+def tf_trainer(corpus_name, tok_name, masking_fns=[]):
 
-    ## Consider: Storing corpora by ID and accessing directly
-    ## (rather than using a query for a singleton result).
+    ## Fetch a (CouchDB) view of qualified corpora
     corpus_view = inpho_db.query(
         '''
         function(doc){
@@ -154,8 +153,8 @@ def tf_trainer(corpus_name, masking_fns=[], tok_name='paragraphs'):
     ## Save the matrix to disk and record
     ## its existence in the database.
 
-    matrix_dir = inpho_db['data_root']['dir'] + corpus_name + '/matrices/'
-    #matrix_dir = inpho_db['data_root']['dir'] + 'sep/complete/matrices/'
+    #matrix_dir = inpho_db['data_root']['dir'] + corpus_name + '/matrices/'
+    matrix_dir = inpho_db['data_root']['dir'] + 'sep/complete/matrices/'
     
     matrix_filename = corpus_name + '-'
     for fn in masking_fns:
@@ -166,18 +165,66 @@ def tf_trainer(corpus_name, masking_fns=[], tok_name='paragraphs'):
     
     tfModel.save_matrix(matrix_path)
 
-    matrix_doc = MatrixDocument(model_class=TfModel.__name__,
+    matrix_doc = MatrixDocument(name='tf',
+                                model_class=TfModel.__name__,
                                 filename=matrix_path,
                                 src_corpus_file=corpus_doc['filename'],
                                 tok_name=tok_name)
     
     inpho_db.save(matrix_doc)
+
     return tfModel
 
 
 # Typical call:
 # >>> tf_trainer('sep', masking_fns=['nltk'], tok_name='articles')
 
+
+# Typical call:
+# >>> tf_viewer('sep', tok_name='paragraphs', masking_fns=['nltk'])
+
+def tf_viewer(corpus_name, tok_name, masking_fns=[]):
+    ## valid tok_name values include 'paragraphs', 'articles', ...
+
+    ## Fetch a (CouchDB) view of qualified corpora.
+    corpus_view = inpho_db.query(
+        '''
+        function(doc){
+          if (doc.name === '%s'){
+            emit(doc.name, doc);
+          }
+        }
+        ''' % corpus_name
+    )
+
+    ## Get the corpus meta data and fetch the corpus from disk.
+    corpus_doc = corpus_view.rows[0].value
+    corpus_obj = corpus.Corpus.load(corpus_doc['filename'])
+
+
+
+    ## Fetch a (CouchDB) view of qualified matrices.
+    matrix_view = inpho_db.query(
+        '''
+        function(doc){
+          if (doc.name === 'tf' && tok_name === '%s' ){
+            emit(doc.name, doc);
+          }
+        }
+        ''' % tok_name
+    )
+
+    ## Get the matrix meta data and fetch the matrix from disk.
+    matrix_doc = matrix_view.rows[0].value
+    matrix_path = matrix_doc['filename']
+
+    ## fetch the matrix given
+    viewer = TfViewer(tok_name=tok_name)
+
+    ## Now that we have the filename of the matrix, load it
+    viewer.load_matrix(matrix_path)
+    
+    return viewer
 
 
 def InphoTrainer(object):
