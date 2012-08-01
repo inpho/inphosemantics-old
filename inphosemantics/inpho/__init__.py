@@ -1,9 +1,13 @@
 from couchdb import Document, Server
 from couchdb.mapping import *
+import inphosemantics
+from inphosemantics.viewer import tfviewer
 from inphosemantics import corpus
 from inphosemantics.model import tf
+from datetime import datetime
 
-__all__ = ['FileDocument', 'CorpusDocument', 'MatrixDocument']
+
+__all__ = ['FileDocument', 'MaskedCorpusDocument', 'CompressedCorpusDocument', 'MatrixDocument']
 
 
 
@@ -129,6 +133,8 @@ def test_add_comp_corpus():
 
 
 
+# Typical call:
+# >>> tf_trainer('sep', masking_fns=['nltk'], tok_name='articles')
 def tf_trainer(corpus_name, tok_name, masking_fns=[]):
 
     ## Fetch a (CouchDB) view of qualified corpora
@@ -166,23 +172,22 @@ def tf_trainer(corpus_name, tok_name, masking_fns=[]):
     tfModel.save_matrix(matrix_path)
 
     matrix_doc = MatrixDocument(name='tf',
-                                model_class=TfModel.__name__,
+                                model_class=tf.TfModel.__name__,
                                 filename=matrix_path,
                                 src_corpus_file=corpus_doc['filename'],
                                 tok_name=tok_name)
     
-    inpho_db.save(matrix_doc)
+    #inpho_db.save(matrix_doc)
+    matrix_doc.store(inpho_db)
 
     return tfModel
 
 
-# Typical call:
-# >>> tf_trainer('sep', masking_fns=['nltk'], tok_name='articles')
+
 
 
 # Typical call:
 # >>> tf_viewer('sep', tok_name='paragraphs', masking_fns=['nltk'])
-
 def tf_viewer(corpus_name, tok_name, masking_fns=[]):
     ## valid tok_name values include 'paragraphs', 'articles', ...
 
@@ -207,7 +212,7 @@ def tf_viewer(corpus_name, tok_name, masking_fns=[]):
     matrix_view = inpho_db.query(
         '''
         function(doc){
-          if (doc.name === 'tf' && tok_name === '%s' ){
+          if (doc.name === 'tf' && doc.tok_name === '%s' ){
             emit(doc.name, doc);
           }
         }
@@ -219,7 +224,7 @@ def tf_viewer(corpus_name, tok_name, masking_fns=[]):
     matrix_path = matrix_doc['filename']
 
     ## fetch the matrix given
-    viewer = TfViewer(tok_name=tok_name)
+    viewer = inphosemantics.viewer.tfviewer.TfViewer(tok_name=tok_name)
 
     ## Now that we have the filename of the matrix, load it
     viewer.load_matrix(matrix_path)
