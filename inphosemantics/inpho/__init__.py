@@ -14,7 +14,7 @@ inpho_db = server['inpho']
 
 class FileDocument(Document):
 
-    date = DateTimeField()
+    date = DateTimeField(default=datetime.now)
 
     filename = TextField()
 
