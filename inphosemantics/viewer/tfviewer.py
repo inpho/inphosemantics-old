@@ -1,36 +1,7 @@
 import inphosemantics.viewer as vw
-import inphosemantics.model.tf as tf
 
 
 class TfViewer(vw.Viewer):
-
-    def __init__(self,
-                 corpus=None,
-                 corpus_filename=None, 
-                 model=None,
-                 matrix=None,
-                 matrix_filename=None,
-                 token_type=None,
-                 stoplist=None):
-
-        if matrix or matrix_filename:
-            super(TfViewer, self)\
-                .__init__(corpus=corpus,
-                          corpus_filename=corpus_filename, 
-                          model=model,
-                          model_type=tf.TfModel,
-                          matrix=matrix,
-                          matrix_filename=matrix_filename,
-                          token_type=token_type,
-                          stoplist=stoplist)
-        else:
-            super(TfViewer, self)\
-                .__init__(corpus=corpus,
-                          corpus_filename=corpus_filename, 
-                          model=model,
-                          matrix_filename=matrix_filename,
-                          token_type=token_type,
-                          stoplist=stoplist)
 
 
     def similar_terms(self, term, filter_nan=False):
@@ -51,10 +22,17 @@ class TfViewer(vw.Viewer):
     def simmat_documents(self, document_list):
 
         return vw.simmat_documents(self, document_list)
-    
-        
-    def cf(self, term):
-        pass
 
+    
+    def cf(self, term):
+        """
+        """
+        row = self.matrix.tocsr()[term,:]
+        
+        return row.sum(1)[0, 0]
+
+    
     def cfs(self):
-        pass
+        """
+        """
+        return self.matrix.tocsr().sum(1)[0, 0]

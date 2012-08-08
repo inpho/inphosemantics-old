@@ -1,6 +1,5 @@
 import numpy as np
 
-__all__ = ['BaseCorpus', 'Corpus', 'MaskedCorpus']
 
 class BaseCorpus(object):
     """
@@ -132,10 +131,24 @@ class BaseCorpus(object):
                 if self._validate_indices(indices):
                     self.tok[tok_names[i] + '_indices'] = indices
 
+
                 
+    @property
+    def tok_names(self):
+        """
+        Returns a list of names of the available tokenizations.
+        """
+        names = []
+        
+        for t in self.tok:
 
+            if t.endswith('_indices'):
+                
+                names.append(t[:-8])
 
-
+        return names
+        
+        
     def __getitem__(self, i):
 
         return self.corpus[i]
@@ -279,7 +292,12 @@ class BaseCorpus(object):
         BaseCorpus
         """
         k = name + '_metadata'
-        return self.tok[k]
+
+        if k in self.tok:
+
+            return self.tok[k]
+        
+        return None
     
 
 
@@ -521,6 +539,8 @@ class Corpus(BaseCorpus):
         numpy.load
         """
 
+        print 'Loading corpus from', file
+
         arrays_in = np.load(file)
 
         c = Corpus([])
@@ -562,6 +582,8 @@ class Corpus(BaseCorpus):
         Corpus.load
         numpy.savez
         """
+        print 'Saving Corpus as', file
+        
         arrays_out = dict()
         
         if not terms_only:
@@ -720,6 +742,8 @@ class MaskedCorpus(Corpus):
         numpy.load
         """
 
+        print 'Loading corpus from', file
+
         arrays_in = np.load(file)
 
         c = MaskedCorpus([])
@@ -741,7 +765,7 @@ class MaskedCorpus(Corpus):
 
 
 
-    def save(self, file, terms_only=False):
+    def save(self, file, terms_only=False, compressed=False):
         """
         Saves data from a MaskedCorpus object as an `npz` file.
         
@@ -764,18 +788,28 @@ class MaskedCorpus(Corpus):
         MaskedCorpus.load
         numpy.savez
         """
-        arrays_out = dict()
+        if compressed:
 
-        if not terms_only:
-            arrays_out.update(self.tok)
+            self.compressed_corpus().save(file, terms_only=terms_only)
 
-            arrays_out['corpus_data'] = self.corpus.data
-            arrays_out['corpus_mask'] = self.corpus.mask
+        else:
+        
+            print 'Saving masked corpus as', file
+        
+            arrays_out = dict()
 
-        arrays_out['terms_data'] = self.terms.data
-        arrays_out['terms_mask'] = self.terms.mask
+            if not terms_only:
+                arrays_out.update(self.tok)
+                
+                arrays_out['corpus_data'] = self.corpus.data
+                arrays_out['corpus_mask'] = self.corpus.mask
 
-        np.savez(file, **arrays_out)
+            arrays_out['terms_data'] = self.terms.data
+            arrays_out['terms_mask'] = self.terms.mask
+
+            np.savez(file, **arrays_out)
+
+
 
 
     def compressed_corpus(self):
@@ -783,36 +817,42 @@ class MaskedCorpus(Corpus):
         Returns a Corpus object containing the data from the
         compressed MaskedCorpus object.
         """
-        c = Corpus([])
 
-        c.corpus = self.corpus.compressed()
+        print 'Compressing corpus terms'
 
-        c.terms = self.terms.compressed()
+        # Reconstruct string representation of corpus
+        corpus = [self.terms[term] for term in self.corpus.compressed()]
 
-        c.__set_terms_int()
+        tok_names = self.tok_names
 
-        for name in tok_names:
+        tok_data = []
 
-            tokens = self.view_tokens[name]
+        for name in self.tok_names:
 
-            spans = [token.shape[0] for token in tokens]
+            print 'Realigning tokenization:', name
 
-            tokenization = []
+            tokens = self.view_tokens(name)
+
+            meta = self.view_metadata(name)
             
-            acc = 0
+            spans = [token.compressed().shape[0] for token in tokens]
 
-            for span in spans:
+            indices = np.cumsum(spans)
+            
+            if meta == None:
 
-                acc += span            
+                tok_data.append(indices)
 
-                tokenization.append(acc)
+            else:
 
-            c.tok[name + '_indices'] = tokenization
-
-            c.tok[name + '_metadata'] = self.view_metadata(name)
+                tok_data.append(zip(indices, meta))
 
 
-        return c
+
+        return Corpus(corpus,
+                      tok_names=tok_names,
+                      tok_data=tok_data)
+
 
 
 
@@ -862,184 +902,3 @@ def mask_from_golist(corp_obj, golist):
     mask_from_stoplist(corp_obj, golist)
 
     corp_obj.mask = np.logical_not(corp_obj.mask)
-    
-
-
-
-#############################################################################
-#                               Tests
-#############################################################################
-
-
-
-def test_masked_corpus_1():
-
-    text = ['I', 'came', 'I', 'saw', 'I', 'conquered']
-    tok_names = ['sentences']
-    tok_data = [[(2, 'Veni'), (4, 'Vidi'), (6, 'Vici')]]
-    masked_terms = ['I', 'came']
-
-    c = MaskedCorpus(text,
-                     tok_names=tok_names,
-                     tok_data=tok_data,
-                     masked_terms=masked_terms)
-
-    from tempfile import TemporaryFile
-    tmp = TemporaryFile()
-    c.save(tmp)
-
-    tmp.seek(0)
-
-    c_in = MaskedCorpus.load(tmp)
-
-    print '*' * 50
-
-    print 'corpus:', c_in.corpus
-    print 'data:', c_in.corpus.data
-    print 'mask:', c_in.corpus.mask
-    print 'fill value:', c_in.corpus.fill_value
-    print 'tokenizations:', c_in.tok
-    print 'terms', c_in.terms
-    print 'terms str->int', c_in.terms_int
-    print 'masked terms', c_in.masked_terms
-    print 'compressed terms', c_in.compressed_terms
-    print 'compressed terms str->int', c_in.compressed_terms_int
-
-    
-    return c_in
-
-
-
-import tokenizer
-
-# def tokenize_test_data():
-
-
-#     path = 'test-data/iep/selected/corpus/plain'
-
-#     tokens = tokenizer.ArticlesTokenizer(path)
-
-#     terms = tokens.terms
-
-#     tok_names = ['articles', 'paragraphs', 'sentences']
-
-#     tok_articles = zip(tokens.articles,
-#                        tokens.tokens_metadata['articles'])
-        
-#     tok_paragraphs = tokens.paragraphs
-                     
-#     tok_sentences = tokens.sentences
-
-#     tok_data = [tok_articles, tok_paragraphs, tok_sentences]
-
-
-#     return terms, tok_names, tok_data
-
-
-def tokenize_test_data():
-
-    path = 'test-data/iep/selected/corpus/plain'
-
-    tokens = tokenizer.ArticlesTokenizer(path)
-
-    return (tokens.terms, tokens.tok_names, tokens.tok_data)
-
-
-
-
-def load_test_stoplist():
-
-    filename = 'test-data/stoplists/stoplist-nltk-english.txt'
-
-    with open(filename, 'r') as f:
-        stoplist = f.read().split('\n')
-
-    stoplist = [word for word in stoplist if word]
-
-    return stoplist
-
-
-
-def test_corpus():
-
-    terms, tok_names, tok_data = tokenize_test_data()
-
-    c = Corpus(terms,
-               tok_names=tok_names,
-               tok_data=tok_data)
-
-    print 'First article:\n',\
-          c.view_tokens('articles', True)[1]
-    print '\nFirst five paragraphs:\n',\
-          c.view_tokens('paragraphs', True)[:5]
-    print '\nFirst ten sentences:\n',\
-          c.view_tokens('sentences', True)[:10]
-
-    print '\nLast article:\n',\
-          c.view_tokens('articles', True)[-1]
-    print '\nLast five paragraphs:\n',\
-          c.view_tokens('paragraphs', True)[-5:]
-    print '\nLast ten sentences:\n',\
-          c.view_tokens('sentences', True)[-10:]
-
-    print '\nSource of second article:',\
-          c.view_metadata('articles')[2]
-
-    return c
-
-
-
-
-
-
-
-def test_masked_corpus_2():
-
-    terms, tok_names, tok_data = tokenize_test_data()
-
-    c = MaskedCorpus(terms,
-                     tok_names=tok_names,
-                     tok_data=tok_data)
-
-    stoplist = load_test_stoplist()
-
-    mask_sing_occ(c)
-
-    mask_from_stoplist(c, stoplist)
-
-    print 'First article:\n',\
-          c.view_tokens('articles', True)[1]
-    print '\nFirst five paragraphs:\n',\
-          c.view_tokens('paragraphs', True)[:5]
-    print '\nFirst ten sentences:\n',\
-          c.view_tokens('sentences', True)[:10]
-
-    print '\nLast article:\n',\
-          c.view_tokens('articles', True)[-1]
-    print '\nLast five paragraphs:\n',\
-          c.view_tokens('paragraphs', True)[-5:]
-    print '\nLast ten sentences:\n',\
-          c.view_tokens('sentences', True)[-10:]
-
-    print '\nSource of second article:',\
-          c.view_metadata('articles')[2]
-
-    return c
-
-
-
-
-def test_compressed():
-
-    c = test_masked_corpus_2()
-
-    comp_c = c.compressed_corpus()
-
-    print 'Flat view:'
-    print [ma.data for ma in c.view_tokens('sentences', True)[:10]]
-
-    print 'Masked view:'
-    print c.view_tokens('sentences', True)[:10]
-
-    print 'Compressed view:'
-    print comp_c.view_tokens('sentences', True)[:10]

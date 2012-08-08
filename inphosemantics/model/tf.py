@@ -1,58 +1,60 @@
-from inphosemantics.model import Model
+import multiprocessing as mp
 
-from scipy.sparse import lil_matrix
+import numpy as np
+from scipy import sparse
+
+from inphosemantics import model
 
 
-# TODO: Write a parallel algorithm for this (too slow)
 
-class TfModel(Model):
+class TfModel(model.Model):
     """
     """
-    def train(self, corpus, token_type, stoplist=None):
-        """
-        stoplist is ignored in training this type of model.
-        """
-        tokens = corpus.view_tokens(token_type)
-        shape = (len(corpus.term_types), len(tokens))
+    def train(self, corpus, tok_name):
 
-        self.matrix = lil_matrix(shape)
+        print 'Viewing tokens:', tok_name
+
+        tokens = corpus.view_tokens(tok_name)
+
+        p = mp.Pool()
+
+        columns = p.map(train_fn, tokens, 1)
+
+        p.close()
+
+        # non-parallel map for debugging
+        # columns = map(train_fn, tokens)
+
+        print 'Updating data matrix'
+
+        shape = (corpus.terms.shape[0], len(tokens))
+
+        self.matrix = sparse.lil_matrix(shape)
+
+        for j, column in enumerate(columns):
+
+            for i, val in column.iteritems():
+
+                self.matrix[i, j] = val
         
-        for j,token in enumerate(tokens):
-            for term in token:
-                self.matrix[term,j] += 1
-
-
-    def cf(self, term):
-        pass
-    
-    def cfs(self):
-        """
-        """
-        pass
 
 
 
 
+def train_fn(token):
 
-    
-def test_TfModel():
+    column = dict()
 
-    from inphosemantics import load_picklez, dump_matrix
+    print 'Training on token', token
 
-    corpus_filename =\
-        'test-data/iep/selected/corpus/iep-plato.pickle.bz2'
-    matrix_filename =\
-        'test-data/iep/selected/models/iep-plato-tf-word-article.npy'
-    document_type = 'articles'
+    for term in token:
 
-    corpus = load_picklez(corpus_filename)
+        if term in column:
 
-    model = TfModel()
+            column[term] += 1
 
-    model.train(corpus, 'articles')
+        else:
 
-    model.dump_matrix(matrix_filename)
+            column[term] = 1
 
-    model.load_matrix(matrix_filename)
-
-    return corpus, model, document_type
+    return column

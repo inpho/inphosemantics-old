@@ -1,49 +1,78 @@
-from __future__ import division
+import multiprocessing as mp
 
+from scipy import sparse
 import numpy as np
 
-from inphosemantics.model import Model
-from inphosemantics.model.tf import TfModel
+from inphosemantics import model
+from inphosemantics.model import tf
 
 
-# TODO: Write a parallel algorithm for this (too slow)
+"""
+A term may occur in every document. Then the idf of that term will be
+0; so the tfidf will also be zero.
 
-class TfIdfModel(Model):
+A term may occur in no documents at all. This typically happens only
+when that term has been masked. In that case the idf of that term is
+undefined (division by zero). So also the tfidf of that term will be
+undefined.
+"""
+
+
+def idf(row):
+    """
+    Count the number of non-zero entries in the row and scale
+    """
+    return np.log(np.float32(row.shape[1]) / row.nnz)
+
+
+
+def train_fn(row_index):
+
+    print 'Computing row', row_index
+
+    row = train_fn.tf_matrix[row_index,:].astype('float32')
     
-    def train(self,
-              corpus,
-              token_type,
-              stoplist=None,
-              tf_matrix=None):
-        """
-        stoplist is ignored in training this type of model.
-        """
+    return row * idf(row)
+
+
+
+class TfIdfModel(model.Model):
+    """
+    """
+    def train(self, corpus, tok_name, tf_matrix=None):
+
         if tf_matrix:
-            self.matrix = tf_matrix
+
+            train_fn.tf_matrix = tf_matrix.tocsr()
+
         else:
-            tf_model = TfModel()
-            tf_model.train(corpus, token_type, stoplist)
-            self.matrix = tf_model.matrix
 
-        for i in xrange(self.matrix.shape[0]):
-            self.matrix[i,:] *= self.idf(i)
+            tf_model = tf.TfModel()
+            tf_model.train(corpus, tok_name)
+            
+            train_fn.tf_matrix = tf_model.matrix.tocsr()
 
 
-    def idf(self, term):
+        del tf_matrix
 
-        # Count the number of non-zero entries in the row and
-        # scale
-        return np.log(self.matrix.shape[1]
-                      / self.matrix[term,:].nnz)
 
-    def idfs(self):
+        # Suppress division by zero errors
+        old_settings = np.seterr(divide='ignore')
 
-        results = [(i, self.idf(i))
-                   for i in xrange(self.matrix.shape[0])]
-        dtype = [('row', np.int32), ('value', np.float)]
-        results = np.array(results, dtype=dtype)
-        results.sort(order='value')
-        results = results[::-1]
-        
-        return results
+        # Single-processor map for debugging
+        # rows = map(train_fn, range(train_fn.tf_matrix.shape[0]))
 
+
+        p = mp.Pool()
+
+        rows = p.map(train_fn, range(train_fn.tf_matrix.shape[0]), 1000)
+
+        p.close()
+
+
+        # Restore default handling of floating-point errors
+        np.seterr(**old_settings)
+
+        print 'Updating data matrix'
+
+        self.matrix = sparse.vstack(rows)
