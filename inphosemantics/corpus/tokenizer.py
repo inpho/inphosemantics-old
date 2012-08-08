@@ -198,6 +198,70 @@ class ArticlesTokenizer(object):
 
 
 
+class ArticleTokenizer(object):
+    """
+    """
+    def __init__(self, filename):
+
+        self.filename = filename
+        self.terms = []
+        self.tok_names = ['paragraphs', 'sentences']
+
+        self.tok_data = None
+        self._compute_tokens()
+    
+
+
+    def _compute_tokens(self):
+
+        with open(self.filename, mode='r') as f:
+            article = f.read()
+
+        paragraph_tokens = []
+        sentence_spans = []
+
+        print 'Computing paragraph tokens'
+
+        paragraphs = paragraph_tokenize(article)
+            
+        for paragraph in paragraphs:
+            sentences = sentence_tokenize(paragraph)
+
+            for sentence in sentences:
+                terms = word_tokenize(sentence)
+
+                self.terms.extend(terms)
+                    
+                sentence_spans.append(len(terms))
+
+            paragraph_tokens.append(sum(sentence_spans))
+                    
+
+        print 'Computing sentence tokens'
+        acc = 0
+        sentence_tokens = []
+        for i in sentence_spans:
+            acc += i
+            sentence_tokens.append(acc)
+
+
+        while (paragraph_tokens != []
+               and paragraph_tokens[-1] == len(self.terms)):
+
+            paragraph_tokens.pop()
+
+
+        while (sentence_tokens != []
+               and sentence_tokens[-1] == len(self.terms)):
+
+            sentence_tokens.pop()
+
+
+        self.tok_data = [paragraph_tokens, sentence_tokens]
+
+
+
+
 
 
 ######################################################################
@@ -227,6 +291,9 @@ def test_tokenizers():
     print 'Words:\n'
     for sent in paragraph_sentences:
         print ', '.join(word_tokenize(sent)), '\n'
+
+
+
 
 
 
