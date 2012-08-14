@@ -5,9 +5,6 @@ from inphosemantics import model
 from inphosemantics.model import similarity
 
 
-
-
-
 class Viewer(object):
     """
 
