@@ -1,5 +1,7 @@
 from couchdb import Document, Server
 from couchdb.mapping import *
+from inphosemantics import corpus
+from inphosemantics.model import tf
 
 __all__ = ['FileDocument', 'CorpusDocument', 'MatrixDocument']
 
@@ -39,10 +41,12 @@ class MatrixDocument(FileDocument):
 
     name = TextField()
 
+    filename = TextField()
+    
     model_class = TextField()
-
+    
     src_corpus_file = TextField()
-
+    
 
     ####################################
     #    TF-related parameters
@@ -120,23 +124,52 @@ def test_add_comp_corpus():
     
     doc.store(inpho_db)
 
+    return doc
+
 
 
 
 def tf_trainer(corpus_name, masking_fns=[], tok_name='paragraphs'):
 
-    corpus_filename = inpho_db.query(
+    ## Consider: Storing corpora by ID and accessing directly
+    ## (rather than using a query for a singleton result).
+    corpus_view = inpho_db.query(
         '''
         function(doc){
-          if (doc.name === 'sep' && doc.nltk){
+          if (doc.name === '%s'){
             emit(doc.name, doc)
           }
         }
-        '''
+        ''' % corpus_name
     )
 
-    print 'Corpus filename', corpus_filename
 
+    ## Get the corpus meta data and fetch the corpus from disk.
+    corpus_doc = corpus_view.rows[0].value
+    sep_corpus = corpus.Corpus.load(corpus_doc['filename'])
+
+    ## Fetch the model and train it.
+    tfModel = tf.TfModel()
+    tfModel.train(sep_corpus, tok_name)
+
+    
+    ## Save the matrix to disk and record
+    ## its existence in the database.
+    matrix_dir = inpho_db['data_root']['dir'] + 'sep/complete/matrices/'
+    matrix_filename = corpus_name + '-' +\
+                      'tf'        + '-' +\
+                      tok_name + '.npy'
+    matrix_path = matrix_dir + matrix_filename
+    
+    tfModel.save_matrix(matrix_path)
+
+    matrix_doc = MatrixDocument(model_class=str(tf),\
+                                filename=matrix_path,\
+                                src_corpus_file=corpus_doc['filename'],\
+                                tok_name=tok_name)
+    
+    inpho_db.save(matrix_doc)
+    return tfModel
 
 
 # Typical call:
