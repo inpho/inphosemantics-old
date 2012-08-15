@@ -111,8 +111,10 @@ class BaseCorpus(object):
             for i,t in enumerate(tok_data):
                 
                 try:
+
                     # Suppose that `t` is array-like with tuple-like
                     # elements (i.e., it has metadata)
+
                     indices, metadata = zip(*t)
 
                     indices = np.asarray(indices)
@@ -125,10 +127,21 @@ class BaseCorpus(object):
 
                     # Suppose instead that `t` has unsubscriptable
                     # elements (i.e., it has no metadata)
+
                     indices = np.asarray(t)
 
 
                 if self._validate_indices(indices):
+
+                    # Trim breaks at the end of the corpus.
+                    # (Otherwise, `np.split` leaves a trailing empty
+                    # float-typed array in `view_tokens`.)
+                
+                    while (indices.shape[0] != 0 and
+                           indices[-1] == self.corpus.shape[0]):
+
+                        indices = indices[:-1]
+                    
                     self.tok[tok_names[i] + '_indices'] = indices
 
 
@@ -262,12 +275,6 @@ class BaseCorpus(object):
         k = name + '_indices'
 
         tokens = np.split(self.corpus, self.tok[k])
-
-        # If the final token break is the end of the corpus, remove
-        # the trailing empty array produced by np.split
-        if self.tok[k][-1] == self.corpus.shape[0]:
-
-            del tokens[-1]
                 
         return tokens
 
@@ -582,7 +589,7 @@ class Corpus(BaseCorpus):
         Corpus.load
         numpy.savez
         """
-        print 'Saving Corpus as', file
+        print 'Saving corpus as', file
         
         arrays_out = dict()
         
@@ -699,7 +706,16 @@ class MaskedCorpus(Corpus):
 
         #Necessary because np.split returns not masked arrays but
         #ndarrays if the section has no elements
-        token_list = [np.ma.asarray(token) for token in token_list]
+
+        for i in xrange(len(token_list)):
+
+            token = token_list[i]
+
+            if not isinstance(token, np.ma.MaskedArray):
+
+                token_list[i] = np.ma.asarray(token, dtype=self.corpus.dtype)
+
+        
 
         if strings:
 
@@ -709,7 +725,7 @@ class MaskedCorpus(Corpus):
 
                 token_str = [self.terms[t] for t in token.data]
 
-                token_list_.append(np.ma.array(token_str, mask=token.mask))
+                token_list_.append(np.ma.array(token_str, mask=token.mask, dtype=np.str_))
 
             token_list = token_list_
                 
@@ -864,12 +880,15 @@ class MaskedCorpus(Corpus):
 
 
 
-def mask_sing_occ(corp_obj):
+def mask_f1(corp_obj):
     """
     Takes a MaskedCorpus object and masks all terms that occur only
     once in the corpus. The operation is in-place.
     """
-    for term in corp_obj.terms:
+
+    terms = corp_obj.terms.compressed()
+    
+    for term in terms:
 
         term_int = corp_obj.terms_int[term]
         

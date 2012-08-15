@@ -7,11 +7,6 @@ import nltk
 
 
 
-######################################################################
-#          Tokenizers for new-style Corpus Class 2012-5-16
-######################################################################
-
-
 def word_tokenize(text):
     """
     Takes a string and returns a list of strings. Intended use: the
@@ -87,6 +82,9 @@ def textfile_tokenize(path):
 
     return out
 
+
+
+
 ######################################################################
 #                              Utilities
 ######################################################################
@@ -116,7 +114,7 @@ def rehyph(sent):
 
 
 ######################################################################
-#                 Corpus-specific tokenizing classes
+#                         Tokenizing classes
 ######################################################################
 
 
@@ -126,7 +124,7 @@ class ArticlesTokenizer(object):
     def __init__(self, path):
 
         self.path = path
-        self.terms = []
+        self.words = []
         self.tok_names = ['articles', 'paragraphs', 'sentences']
 
         self.tok_data = None
@@ -154,11 +152,11 @@ class ArticlesTokenizer(object):
                 sentences = sentence_tokenize(paragraph)
 
                 for sentence in sentences:
-                    terms = word_tokenize(sentence)
+                    words = word_tokenize(sentence)
 
-                    self.terms.extend(terms)
+                    self.words.extend(words)
                     
-                    sentence_spans.append(len(terms))
+                    sentence_spans.append(len(words))
 
                 paragraph_tokens.append(sum(sentence_spans))
                     
@@ -168,25 +166,6 @@ class ArticlesTokenizer(object):
         print 'Computing sentence tokens'
         
         sentence_tokens = np.cumsum(sentence_spans)
-
-
-        while (article_tokens != []
-               and article_tokens[-1] == len(self.terms)):
-            
-            article_tokens.pop()
-
-
-        while (paragraph_tokens != []
-               and paragraph_tokens[-1] == len(self.terms)):
-
-            paragraph_tokens.pop()
-
-
-        while (sentence_tokens != []
-               and sentence_tokens[-1] == len(self.terms)):
-
-            sentence_tokens.pop()
-
 
         article_tokens = zip(article_tokens, articles_metadata)
 
@@ -203,7 +182,7 @@ class ArticleTokenizer(object):
     def __init__(self, filename):
 
         self.filename = filename
-        self.terms = []
+        self.words = []
         self.tok_names = ['paragraphs', 'sentences']
 
         self.tok_data = None
@@ -227,11 +206,11 @@ class ArticleTokenizer(object):
             sentences = sentence_tokenize(paragraph)
 
             for sentence in sentences:
-                terms = word_tokenize(sentence)
+                words = word_tokenize(sentence)
 
-                self.terms.extend(terms)
+                self.words.extend(words)
                     
-                sentence_spans.append(len(terms))
+                sentence_spans.append(len(words))
 
             paragraph_tokens.append(sum(sentence_spans))
                     
@@ -242,18 +221,6 @@ class ArticleTokenizer(object):
         for i in sentence_spans:
             acc += i
             sentence_tokens.append(acc)
-
-
-        while (paragraph_tokens != []
-               and paragraph_tokens[-1] == len(self.terms)):
-
-            paragraph_tokens.pop()
-
-
-        while (sentence_tokens != []
-               and sentence_tokens[-1] == len(self.terms)):
-
-            sentence_tokens.pop()
 
 
         self.tok_data = [paragraph_tokens, sentence_tokens]
@@ -270,14 +237,14 @@ class ArticleTokenizer(object):
 
 def test_tokenizers():
 
-    path = '/var/inphosemantics/data/iep/complete/corpus/plain'
+    path = 'inphosemantics/tests/data/iep/selected/corpus/plain/'
 
     iep_articles, iep_meta = textfile_tokenize(path)
 
-    print iep_articles[10], '\n'
-    print 'That was the article from', iep_meta[10], '\n'
+    print iep_articles[2], '\n'
+    print 'That was the article from', iep_meta[2], '\n'
     
-    article_paragraphs = paragraph_tokenize(iep_articles[10])
+    article_paragraphs = paragraph_tokenize(iep_articles[2])
 
     print 'Penultimate paragraph:\n\n', article_paragraphs[-2], '\n'
 
@@ -292,92 +259,4 @@ def test_tokenizers():
         print ', '.join(word_tokenize(sent)), '\n'
 
 
-
-
-
-
-# TODO: Update this test
-
-# def test_IepTokens():
-
-#     path = 'test-data/iep/selected/corpus/plain'
-
-#     tokens = IepTokens(path)
-
-#     print 'Article breaks:\n', tokens.articles
-#     print '\nParagraph breaks:\n', tokens.paragraphs
-#     print '\nSentence breaks:\n', tokens.sentences
-
-#     return tokens
-
-
-
-
-
-
-
-
-
-######################################################################
-#                            * Old *
-#                    Load the plain text corpus
-#                     and dump tokenized corpus
-######################################################################
-
-# class Tokenizer(CorpusBase):
-
-#     def __init__(self, corpus, corpus_param):
-
-#         CorpusBase.__init__(self, corpus, corpus_param)
-            
-#         self.stok = nltk.data.load('tokenizers/punkt/english.pickle')
-#         self.wtok = nltk.TreebankWordTokenizer()
-
-
-#     def tok_corpus(self):
-        
-#         fs = os.listdir(self.plain_path)
-#         for f in fs:
-#             name = os.path.splitext(f)[0]
-#             self.tok_article(name)
-
-#         return
-
-
-#     def write_tokens(self, sents, name):
-
-#         tok_file = os.path.join(self.tokenized_path, name + '.pickle')
-
-#         print 'Writing tokenized paragraphs and sentences to', tok_file
-#         with open(tok_file, 'w') as f:
-#             pickle.dump(sents, f)
-
-
-#     def tok_article(self, name):
     
-#         def st(para):
-#             para = self.stok.tokenize(para, realign_boundaries=True)
-#             para = map(lambda sent: self.tok_sent(sent), para)
-#             para = [sent for sent in para if len(sent) > 1]
-#             return para
-
-#         text = self.plain_text(name)
-    
-#         paras = text.split('\n\n')
-#         paras = map(st, paras)
-#         paras = [para for para in paras if para]
-        
-#         self.write_tokens(paras, name)
-    
-#         return        
-
-
-#     def tok_sent(self, sent):
-    
-#         sent = rehyph(sent)
-#         sent = self.wtok.tokenize(sent)
-#         sent = [word.lower() for word in sent]
-#         sent = strip_punc(sent)
-#         sent = rem_num(sent)
-        
-#         return sent
