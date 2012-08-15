@@ -514,9 +514,14 @@ class Corpus(BaseCorpus):
 
                 token_str = [self.terms[t] for t in token]
 
-                token_list_.append(np.array(token_str))
+                token_list_.append(np.array(token_str, dtype=np.str_))
 
             token_list = token_list_
+
+        else:
+            
+            token_list = [np.asarray(token, dtype=self.corpus.dtype)
+                          for token in token_list]
 
         return token_list
 
@@ -704,32 +709,33 @@ class MaskedCorpus(Corpus):
         
         token_list = super(Corpus, self).view_tokens(name)
 
-        #Necessary because np.split returns not masked arrays but
-        #ndarrays if the section has no elements
-
-        for i in xrange(len(token_list)):
-
-            token = token_list[i]
-
-            if not isinstance(token, np.ma.MaskedArray):
-
-                token_list[i] = np.ma.asarray(token, dtype=self.corpus.dtype)
-
-        
-
         if strings:
 
             token_list_ = []
 
             for i,token in enumerate(token_list):
 
-                token_str = [self.terms[t] for t in token.data]
+                if isinstance(token, np.ma.MaskedArray):
+                    
+                    token_str = [self.terms[t] for t in token.data]
 
-                token_list_.append(np.ma.array(token_str, mask=token.mask, dtype=np.str_))
+                    token_str = np.ma.array(token_str, mask=token.mask, dtype=np.str_)
+
+                else:
+
+                    token_str = [self.terms[t] for t in token]
+
+                    token_str = np.ma.array(token_str, dtype=np.str_)
+                    
+                token_list_.append(token_str)
 
             token_list = token_list_
-                
+
+        else:
             
+            token_list = [np.ma.asarray(token, dtype=self.corpus.dtype)
+                          for token in token_list]
+
         return token_list
 
 
