@@ -633,9 +633,11 @@ class MaskedCorpus(Corpus):
 
         # Generate mask from `masked_terms`
 
-        f = np.vectorize(lambda t: t in masked_terms)
+        if masked_terms:
+
+            f = np.vectorize(lambda t: t in masked_terms)
     
-        self.mask_terms(f(self.terms))
+            self.mask_terms(f(self.terms))
 
 
 
