@@ -1,4 +1,7 @@
+import multiprocessing as mp
+
 import numpy as np
+
 
 
 class BaseCorpus(object):
@@ -629,11 +632,10 @@ class MaskedCorpus(Corpus):
         self.terms = np.ma.array(self.terms)
 
         # Generate mask from `masked_terms`
-        if masked_terms:
-            
-            for term in masked_terms:
-            
-                self.mask_term(term)
+
+        f = np.vectorize(lambda t: t in masked_terms)
+    
+        self.mask_terms(f(self.terms))
 
 
 
@@ -654,29 +656,33 @@ class MaskedCorpus(Corpus):
         ----------
         term : string-like
         
+    
+        """
+        self.mask_terms(self.terms == term)
 
+
+
+    def mask_terms(self, term_mask):
         """
 
+        """
+        self.terms = np.ma.masked_where(term_mask, self.terms, copy=False)
 
-        self.terms.mask = np.ma.mask_or(self.terms.mask,
-                                        term == self.terms)
+        f = np.vectorize(lambda t: t is np.ma.masked or term_mask[t])
 
-        # Switch to integer representation of term
-        term = self.terms_int[term]
+        corpus_mask = f(self.corpus)
 
-        self.corpus.mask = np.ma.mask_or(self.corpus.mask,
-                                         term == self.corpus)
+        self.corpus = np.ma.masked_where(corpus_mask, self.corpus, copy=False)
+
 
 
     @property
     def masked_terms(self):
         """
         """
-        masked_terms_ = self.terms.copy()
+        v = np.ma.masked_where(np.logical_not(terms.mask), terms.data, copy=False)
 
-        masked_terms_.mask = np.logical_not(masked_terms_.mask)
-
-        return masked_terms_.compressed()
+        return v.compressed()
 
 
 
@@ -892,17 +898,29 @@ def mask_f1(corp_obj):
     once in the corpus. The operation is in-place.
     """
 
-    terms = corp_obj.terms.compressed()
-    
-    for term in terms:
+    print 'Computing collection frequencies'
 
-        term_int = corp_obj.terms_int[term]
-        
-        occ = (corp_obj.corpus == term_int).nonzero()[0].size
+    f1_fn.corpus = corp_obj.corpus
 
-        if occ == 1:
+    p = mp.Pool()
 
-            corp_obj.mask_term(term)
+    f1_mask = p.map(f1_fn, corp_obj.terms_int.items(), 1000)
+
+    p.close()
+
+    print 'Applying f1 mask'    
+
+    corp_obj.mask_terms(f1_mask)
+
+
+
+def f1_fn((term, term_int)):
+
+    if term == np.ma.masked:
+
+        return True
+
+    return (f1_fn.corpus == term_int).nonzero()[0].size == 1
 
 
 
@@ -911,11 +929,9 @@ def mask_from_stoplist(corp_obj, stoplist):
     Takes a MaskedCorpus object and masks all terms that occur in the
     stoplist. The operation is in-place.
     """
-    for term in stoplist:
-
-        if term in corp_obj.terms:
-            
-            corp_obj.mask_term(term)
+    f = np.vectorize(lambda t: t in stoplist or t is np.ma.masked)
+    
+    return f(corp_obj.terms) 
 
 
 
@@ -924,6 +940,10 @@ def mask_from_golist(corp_obj, golist):
     Takes a MaskedCorpus object and masks all terms that do not occur
     in the golist. The operation is in-place.
     """
-    mask_from_stoplist(corp_obj, golist)
+    for term in corp_obj.terms:
 
-    corp_obj.mask = np.logical_not(corp_obj.mask)
+        if term in golist or term is np.ma.masked:
+
+            pass
+
+        corp_obj.mask_term(term)

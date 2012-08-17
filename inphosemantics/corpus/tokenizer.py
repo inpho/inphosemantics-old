@@ -149,9 +149,11 @@ class ArticlesTokenizer(object):
             paragraphs = paragraph_tokenize(article)
             
             for paragraph in paragraphs:
+                
                 sentences = sentence_tokenize(paragraph)
 
                 for sentence in sentences:
+                    
                     words = word_tokenize(sentence)
 
                     self.words.extend(words)
@@ -164,14 +166,12 @@ class ArticlesTokenizer(object):
 
 
         print 'Computing sentence tokens'
-        
+
         sentence_tokens = np.cumsum(sentence_spans)
 
         article_tokens = zip(article_tokens, articles_metadata)
 
         self.tok_data = [article_tokens, paragraph_tokens, sentence_tokens]
-
-
 
 
 

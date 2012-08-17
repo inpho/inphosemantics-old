@@ -1,8 +1,8 @@
 import numpy as np
 from scipy import sparse
-# from scipy.sparse import linalg
+from scipy.sparse import linalg
 
-import sparsesvd as ssvd
+# import sparsesvd as ssvd
 
 from inphosemantics import model
 from inphosemantics.model import tfidf
@@ -34,41 +34,42 @@ class LsaModel(model.Model):
         self.tfidf_matrix = tfidf_matrix
 
         print 'Performing SVD'
-        
-        u, s, v = ssvd.sparsesvd(tfidf_matrix, tfidf_matrix.shape[1])
 
-        print 'Reducing eigenvalue matrix'
+        u, s, v = linalg.svds(tfidf_matrix, k=300)
+        
+        u = np.float16(u)
+        s = np.float16(np.diag(s))
+        v = np.float16(v)
+
+        # print 'Reducing eigenvalue matrix'
 
         # Reduction: the largest eigenvalues until their sum exceeds
         # half the sum of all the eigenvalues
-        rs = np.zeros((s.size,))
 
-        acc = 0
+        # rs = []
 
-        i = 0
+        # acc = 0
 
-        share = .5 * np.sum(s)
+        # i = 0
 
-        while acc < share:
+        # share = .5 * np.sum(s)
 
-            rs[i] = s[i]
+        # while acc < share:
 
-            acc += s[i]
+        #     rs.append(s[i])
+
+        #     acc += s[i]
             
-            i += 1
+        #     i += 1
 
-        print 'Retaining', i, 'eigenvalues out of', s.size
+        # print 'Retaining', i, 'eigenvalues out of', s.size
 
-        print 'Generating sparse matrices for u, s, v'
+        # rs = np.diag(s)
 
-        sp_u = sparse.bsr_matrix(u.T)
+        # ru = u[:,:rs.shape[0]]
 
-        # sp_rs = sparse.spdiags(rs, 0, rs.size, rs.size, format='bsr')
-
-        sp_rs = sparse.spdiags(s, 0, rs.size, rs.size, format='bsr')
-        
-        sp_v = sparse.bsr_matrix(v)
+        # rv = v[:rs.shape[1],:]
 
         print 'Reconstructing term-document matrix'
 
-        self.matrix = sp_u * (sp_rs * sp_v)
+        self.matrix = np.dot(u, np.dot(s, v))
