@@ -929,21 +929,18 @@ def mask_from_stoplist(corp_obj, stoplist):
     Takes a MaskedCorpus object and masks all terms that occur in the
     stoplist. The operation is in-place.
     """
-    f = np.vectorize(lambda t: t in stoplist or t is np.ma.masked)
+    f = np.vectorize(lambda t: t is np.ma.masked or t in stoplist)
     
-    return f(corp_obj.terms) 
+    f(corp_obj.terms) 
 
 
 
 def mask_from_golist(corp_obj, golist):
     """
     Takes a MaskedCorpus object and masks all terms that do not occur
-    in the golist. The operation is in-place.
+    in the golist. Does not unmask already masked entries. The
+    operation is in-place.
     """
-    for term in corp_obj.terms:
-
-        if term in golist or term is np.ma.masked:
-
-            pass
-
-        corp_obj.mask_term(term)
+    f = np.vectorize(lambda t: t is np.ma.masked or t not in golist)
+    
+    f(corp_obj.terms) 
