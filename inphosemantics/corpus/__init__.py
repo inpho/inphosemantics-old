@@ -916,7 +916,7 @@ def mask_f1(corp_obj):
 
 def f1_fn((term, term_int)):
 
-    if term == np.ma.masked:
+    if term is np.ma.masked:
 
         return True
 
