@@ -28,8 +28,6 @@ def idf(row):
 
 def train_fn(row_index):
 
-    print 'Computing row', row_index
-
     row = train_fn.tf_matrix[row_index,:].astype('float32')
     
     return row * idf(row)
