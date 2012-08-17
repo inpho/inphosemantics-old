@@ -906,24 +906,28 @@ def mask_f1(corp_obj):
 
     p = mp.Pool()
 
-    f1_mask = p.map(f1_fn, corp_obj.terms_int.items(), 1000)
+    f1_mask = p.map(f1_fn, zip(corp_obj.terms.tolist(),
+                               xrange(corp_obj.terms.shape[0])), 1000)
 
     p.close()
 
+    # f1_mask = map(f1_fn, zip(corp_obj.terms.tolist(),
+    #                          xrange(corp_obj.terms.shape[0])))
+
     print 'Applying f1 mask'    
 
-    corp_obj.mask_terms(f1_mask)
+    corp_obj.mask_terms(np.array(f1_mask, dtype=np.bool))
 
 
 
 def f1_fn((term, term_int)):
 
-    if term is np.ma.masked:
+    if term:
+        
+        return (f1_fn.corpus == term_int).nonzero()[0].size == 1
 
-        return True
-
-    return (f1_fn.corpus == term_int).nonzero()[0].size == 1
-
+    return True
+    
 
 
 def mask_from_stoplist(corp_obj, stoplist):
@@ -932,8 +936,8 @@ def mask_from_stoplist(corp_obj, stoplist):
     stoplist. The operation is in-place.
     """
     f = np.vectorize(lambda t: t is np.ma.masked or t in stoplist)
-    
-    f(corp_obj.terms) 
+
+    corp_obj.mask_terms(f(corp_obj.terms))
 
 
 
@@ -944,5 +948,6 @@ def mask_from_golist(corp_obj, golist):
     operation is in-place.
     """
     f = np.vectorize(lambda t: t is np.ma.masked or t not in golist)
-    
-    f(corp_obj.terms) 
+
+    corp_obj.mask_terms(f(corp_obj.terms))
+

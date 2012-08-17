@@ -1,3 +1,5 @@
+import numpy as np
+
 import inphosemantics.viewer as vw
 
 
@@ -35,4 +37,4 @@ class TfViewer(vw.Viewer):
     def cfs(self):
         """
         """
-        return self.matrix.tocsr().sum(1)[0, 0]
+        return np.asarray(self.matrix.tocsr().sum(1)).ravel()

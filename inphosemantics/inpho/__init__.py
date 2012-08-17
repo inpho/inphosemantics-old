@@ -63,7 +63,7 @@ class Inphodata(object):
                               '-nltk-tfidf-paragraphs.npy'
 
         self.lsa_filename = matrix_path + corpus_name +\
-                            '-nltk-lsa-paragraphs-05sigma.npy'
+                            '-nltk-lsa-paragraphs-ev300.npy'
                 
         self.beagle_env_filename = matrix_path + corpus_name +\
                                    '-nltk-beagle-env-d2048-l7.npy'
