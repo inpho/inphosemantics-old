@@ -54,7 +54,7 @@ def similar_rows(row, matrix, filter_nan=False):
     if filter_nan:
         results = [(r,v) for r,v in results if np.isfinite(v)]
         
-    dtype = [('row', np.uint32), ('value', np.float)]
+    dtype = [('row', np.int), ('value', np.float)]
     # NB: numpy >= 1.4 sorts NaN to the end
     results = np.array(results, dtype=dtype)
     results.sort(order='value')
@@ -137,3 +137,53 @@ class SimilarityMatrix(object):
 
         # Redundant representation of a symmetric matrix
         self.matrix += self.matrix.T - np.diag(np.diag(self.matrix))
+
+
+
+def row_norms(matrix):
+
+    norms = np.empty(matrix.shape[0])
+
+    for i in xrange(norms.shape[0]):
+
+        row = matrix[i,:]
+
+        norms[i] = np.dot(row, row)**0.5
+        
+    return norms
+
+
+
+def similar_rows_alt(row_index, matrix, filter_nan=False, norms=None):
+    """
+    For dense arrays.
+    """
+    nums = np.dot(matrix, matrix[row_index,:])
+
+    try:
+
+        dens = norms * norms[row_index]
+
+    except:
+
+        norms = row_norms(matrix)
+
+        dens = norms * norms[row_index]
+
+    out = nums / dens
+
+    print 'Sorting results'
+
+    results = zip(xrange(out.shape[0]), out.tolist())
+    
+    # Filter out undefined results
+    if filter_nan:
+        results = [(r,v) for r,v in results if np.isfinite(v)]
+        
+    dtype = [('row', np.int), ('value', np.float)]
+    # NB: numpy >= 1.4 sorts NaN to the end
+    results = np.array(results, dtype=dtype)
+    results.sort(order='value')
+    results = results[::-1]
+    
+    return results
