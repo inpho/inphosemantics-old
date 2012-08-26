@@ -164,10 +164,12 @@ class BaseCorpus(object):
 
         return names
         
+
         
     def __getitem__(self, i):
 
         return self.corpus[i]
+
 
 
     def _validate_indices(self, indices):
@@ -219,7 +221,6 @@ class BaseCorpus(object):
 
 
 
-
     @staticmethod
     def _validate_metadata(indices, metadata):
         """
@@ -253,6 +254,7 @@ class BaseCorpus(object):
             raise Exception(msg)
 
         return True
+
 
 
     def view_tokens(self, name):
@@ -308,34 +310,40 @@ class BaseCorpus(object):
             return self.tok[k]
         
         return None
-    
 
 
 
     @staticmethod
     def extract_terms(corpus, dtype=None):
-        """
-        Extracts the term set of a corpus.
-        
-        Parameters
-        ----------
-        corpus : array-like
-
-        Returns
-        -------
-        An indexed set of the elements in the object as a 1-D array.
-
-        See Also
-        --------
-        BaseCorpus
-        """
-        ind_term_set = list(set(corpus))
-
-        return np.asarray(ind_term_set, dtype=dtype)
-
-
-
+    """
+    Produces an indexed set of terms from a corpus.
     
+    Parameters
+    ----------
+    corpus : array-like
+    
+    Returns
+    -------
+    An indexed set of the elements in `corpus` as a 1-D array.
+    
+    See Also
+    --------
+    BaseCorpus
+
+    Notes
+    -----
+    Python uniquifier by Peter Bengtsson
+    (http://www.peterbe.com/plog/uniqifiers-benchmark)
+    """
+    
+    term_set = set()
+
+    term_list = [term for term in corpus
+                 if term not in term_set and not term_set.add(x)]
+
+    return np.array(term_list, dtype=dtype)
+
+
 
 
 
@@ -483,7 +491,6 @@ class Corpus(BaseCorpus):
 
 
 
-
     def view_tokens(self, name, strings=False):
         """
         Displays a tokenization of the corpus.
@@ -610,6 +617,8 @@ class Corpus(BaseCorpus):
         arrays_out['terms'] = self.terms
 
         np.savez(file, **arrays_out)
+
+
 
 
 
@@ -950,4 +959,8 @@ def mask_from_golist(corp_obj, golist):
     f = np.vectorize(lambda t: t is np.ma.masked or t not in golist)
 
     corp_obj.mask_terms(f(corp_obj.terms))
+
+
+
+
 
