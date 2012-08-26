@@ -32,10 +32,10 @@ def row_norms(matrix):
 
 
 
-def similar_rows_alt(row_index, matrix,
-                     filter_nan=False,
-                     norms=None,
-                     submat_size=def_submat_size):
+def similar_rows(row_index, matrix,
+                 filter_nan=False,
+                 norms=None,
+                 submat_size=def_submat_size):
     """
     """
     if sparse.issparse(matrix):
