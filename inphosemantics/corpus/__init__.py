@@ -1,5 +1,3 @@
-import multiprocessing as mp
-
 import numpy as np
 
 
@@ -903,42 +901,6 @@ class MaskedCorpus(Corpus):
 
 
 
-def mask_f1(corp_obj):
-    """
-    Takes a MaskedCorpus object and masks all terms that occur only
-    once in the corpus. The operation is in-place.
-    """
-
-    print 'Computing collection frequencies'
-
-    f1_fn.corpus = corp_obj.corpus
-
-    p = mp.Pool()
-
-    f1_mask = p.map(f1_fn, zip(corp_obj.terms.tolist(),
-                               xrange(corp_obj.terms.shape[0])), 1000)
-
-    p.close()
-
-    # f1_mask = map(f1_fn, zip(corp_obj.terms.tolist(),
-    #                          xrange(corp_obj.terms.shape[0])))
-
-    print 'Applying f1 mask'    
-
-    corp_obj.mask_terms(np.array(f1_mask, dtype=np.bool))
-
-
-
-def f1_fn((term, term_int)):
-
-    if term:
-        
-        return (f1_fn.corpus == term_int).nonzero()[0].size == 1
-
-    return True
-    
-
-
 def mask_from_stoplist(corp_obj, stoplist):
     """
     Takes a MaskedCorpus object and masks all terms that occur in the
@@ -962,5 +924,23 @@ def mask_from_golist(corp_obj, golist):
 
 
 
+def mask_f1(corp_obj):
+    """
+    Takes a MaskedCorpus object and masks all terms that occur only
+    once in the corpus. The operation is in-place.
+    """
+    print 'Computing collection frequencies'
+    
+    cfs = dict(zip(xrange(corp_obj.terms.shape[0]),
+                   (0 for i in xrange(corp_obj.terms.shape[0]))))
 
+    for term in corp_obj.corpus.data:
 
+        cfs[term] += 1
+
+    print 'Masking frequency 1 terms'
+
+    mask = [(lambda t: cfs[t] == 1)(corp_obj.terms_int[t])
+            for t in corp_obj.terms.data]
+
+    corp_obj.mask_terms(mask)
