@@ -315,33 +315,33 @@ class BaseCorpus(object):
 
     @staticmethod
     def extract_terms(corpus, dtype=None):
-    """
-    Produces an indexed set of terms from a corpus.
-    
-    Parameters
-    ----------
-    corpus : array-like
-    
-    Returns
-    -------
-    An indexed set of the elements in `corpus` as a 1-D array.
-    
-    See Also
-    --------
-    BaseCorpus
-
-    Notes
-    -----
-    Python uniquifier by Peter Bengtsson
-    (http://www.peterbe.com/plog/uniqifiers-benchmark)
-    """
-    
-    term_set = set()
-
-    term_list = [term for term in corpus
-                 if term not in term_set and not term_set.add(x)]
-
-    return np.array(term_list, dtype=dtype)
+        """
+        Produces an indexed set of terms from a corpus.
+        
+        Parameters
+        ----------
+        corpus : array-like
+        
+        Returns
+        -------
+        An indexed set of the elements in `corpus` as a 1-D array.
+        
+        See Also
+        --------
+        BaseCorpus
+        
+        Notes
+        -----
+        Python uniquifier by Peter Bengtsson
+        (http://www.peterbe.com/plog/uniqifiers-benchmark)
+        """
+        
+        term_set = set()
+        
+        term_list = [term for term in corpus
+                     if term not in term_set and not term_set.add(term)]
+        
+        return np.array(term_list, dtype=dtype)
 
 
 
