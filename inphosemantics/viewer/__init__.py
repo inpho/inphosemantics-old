@@ -2,7 +2,7 @@ import numpy as np
 
 from inphosemantics import corpus as cps
 from inphosemantics import model
-from inphosemantics.model import similarity
+import similarity
 
 
 class Viewer(object):
