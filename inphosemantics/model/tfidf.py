@@ -1,5 +1,3 @@
-import multiprocessing as mp
-
 from scipy import sparse
 import numpy as np
 
@@ -18,59 +16,77 @@ undefined.
 """
 
 
-def idf(row):
-    """
-    Count the number of non-zero entries in the row and scale
-    """
-    return np.log(np.float32(row.shape[1]) / row.nnz)
-
-
-
-def train_fn(row_index):
-
-    row = train_fn.tf_matrix[row_index,:].astype('float32')
-    
-    return row * idf(row)
-
-
-
 class TfIdfModel(model.Model):
     """
     """
     def train(self, corpus, tok_name, tf_matrix=None):
 
-        if tf_matrix:
-
-            train_fn.tf_matrix = tf_matrix.tocsr()
-
-        else:
+        if tf_matrix is None:
 
             tf_model = tf.TfModel()
-            tf_model.train(corpus, tok_name)
-            
-            train_fn.tf_matrix = tf_model.matrix.tocsr()
 
+            tf_model.train(corpus, tok_name)
+
+            tf_matrix = tf_model.matrix
+
+            del tf_model
+
+        if sparse.issparse(tf_matrix):
+
+            tf_matrix = tf_matrix.tocsr()
+            
+        tf_matrix = tf_matrix.astype(np.float32)
+
+        n_docs = np.float32(tf_matrix.shape[1])
+
+        print 'Computing tf-idfs'
+
+        idfs = np.empty(tf_matrix.shape[0])
+
+        # Suppress division by zero errors
+
+        old_settings = np.seterr(divide='ignore')
+
+        for i in xrange(tf_matrix.shape[0]):
+
+            idfs[i] = np.log(n_docs / tf_matrix[i:i+1, :].nnz)
+            
+        # Restore default handling of floating-point errors
+
+        np.seterr(**old_settings)
+
+        tf_matrix = tf_matrix.tocoo()
+
+        row = tf_matrix.row.tolist()
+
+        col = tf_matrix.col.tolist()
+
+        data = tf_matrix.data.tolist()
+
+        shape, dtype = tf_matrix.shape, tf_matrix.dtype
 
         del tf_matrix
 
+        for k,i in enumerate(row):
 
-        # Suppress division by zero errors
-        old_settings = np.seterr(divide='ignore')
+            idf = idfs[i]
 
-        # Single-processor map for debugging
-        # rows = map(train_fn, range(train_fn.tf_matrix.shape[0]))
+            if np.isfinite(idf):
+
+                data[k] *= idf
+
+        for i,idf in enumerate(idfs):
+
+            if not np.isfinite(idf):
+
+                row.extend([i] * n_docs)
+
+                col.extend(xrange(n_docs))
+
+                data.extend([idf] * n_docs)
+
+        coo_in = (data, (row, col))
+
+        self.matrix = sparse.coo_matrix(coo_in, shape=shape, dtype=dtype)
 
 
-        p = mp.Pool()
-
-        rows = p.map(train_fn, range(train_fn.tf_matrix.shape[0]), 1000)
-
-        p.close()
-
-
-        # Restore default handling of floating-point errors
-        np.seterr(**old_settings)
-
-        print 'Updating data matrix'
-
-        self.matrix = sparse.vstack(rows)

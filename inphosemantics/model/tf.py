@@ -14,7 +14,7 @@ class TfModel(model.Model):
 
         tokens = corpus.view_tokens(tok_name)
 
-        print 'Counting document frequencies'
+        print 'Computing term frequencies'
 
         data = np.ones_like(corpus.corpus)
         

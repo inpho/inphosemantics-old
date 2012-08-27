@@ -40,7 +40,8 @@ def similar_rows(row_index, matrix,
     """
     if sparse.issparse(matrix):
 
-        nums = sparse_mvdot(matrix, matrix[row_index:row_index+1, :].T,
+        nums = sparse_mvdot(matrix,
+                            matrix[row_index:row_index+1, :].T,
                             submat_size=submat_size)
 
     else:
@@ -49,15 +50,11 @@ def similar_rows(row_index, matrix,
 
         nums = np.squeeze(nums)
 
-    try:
-
-        dens = norms * norms[row_index]
-
-    except:
+    if norms is None:
 
         norms = row_norms(matrix)
 
-        dens = norms * norms[row_index]
+    dens = norms * norms[row_index]
 
     out = nums / dens
 
