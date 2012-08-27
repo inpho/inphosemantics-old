@@ -255,6 +255,18 @@ class BaseCorpus(object):
 
 
 
+    def get_indices(self, name):
+
+        return self.tok[name + '_indices']
+
+
+
+    def get_metadata(self, name):
+
+        return self.tok[name + '_metadata']
+
+
+
     def view_tokens(self, name):
         """
         Displays a tokenization of the corpus.
@@ -274,15 +286,10 @@ class BaseCorpus(object):
         numpy.split
 
         """
-
-        k = name + '_indices'
-
-        tokens = np.split(self.corpus, self.tok[k])
-                
-        return tokens
+        return np.split(self.corpus, self.get_indices(name))
 
 
-
+    
     def view_metadata(self, name):
         """
         Displays the metadata corresponding to a tokenization of the

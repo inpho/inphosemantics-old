@@ -1,5 +1,3 @@
-import multiprocessing as mp
-
 import numpy as np
 from scipy import sparse
 
@@ -12,49 +10,30 @@ class TfModel(model.Model):
     """
     def train(self, corpus, tok_name):
 
-        print 'Viewing tokens:', tok_name
+        print 'Retrieving tokens'
 
         tokens = corpus.view_tokens(tok_name)
 
-        p = mp.Pool()
+        print 'Counting document frequencies'
 
-        columns = p.map(train_fn, tokens, 1)
+        data = np.ones_like(corpus.corpus)
+        
+        row_indices = corpus.corpus
 
-        p.close()
+        col_indices = np.empty_like(corpus.corpus)
 
-        # non-parallel map for debugging
-        # columns = map(train_fn, tokens)
+        j, k = 0, 0
 
-        print 'Updating data matrix'
+        for i,token in enumerate(tokens):
+
+            k += len(token)
+
+            col_indices[j:k] = i
+
+            j = k
 
         shape = (corpus.terms.shape[0], len(tokens))
 
-        self.matrix = sparse.lil_matrix(shape)
+        coo_in = (data, (row_indices, col_indices))
 
-        for j, column in enumerate(columns):
-
-            for i, val in column.iteritems():
-
-                self.matrix[i, j] = val
-        
-
-
-
-
-def train_fn(token):
-
-    column = dict()
-
-    # print 'Training on token', token
-
-    for term in token:
-
-        if term in column:
-
-            column[term] += 1
-
-        else:
-
-            column[term] = 1
-
-    return column
+        self.matrix = sparse.coo_matrix(coo_in, shape=shape, dtype=np.int32)
