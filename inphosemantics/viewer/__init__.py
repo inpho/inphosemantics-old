@@ -38,61 +38,54 @@ class Viewer(object):
     
 
 
-def simmat_terms(viewer, term_list):
+def simmat_terms(corpus, matrix, term_list):
     """
     """
+    indices = [corpus.terms_int[term] for term in term_list]
 
-    terms_int = viewer.corpus.terms_int
+    simmat = similarity.simmat_rows(matrix, indices)
 
-    ## Keep only the important indices.
-    indices = [terms_int[term] for term in term_list]
-
-    ## Create a similarity matrix.
-    simmat = similarity.simmat_rows(indices, viewer.matrix)
-
-    ## Replace integer indices with string indices.
-    simmat.indices = term_list
+    simmat.labels = term_list
     
     return simmat
 
 
 
 
-def simmat_documents(viewer, document_list):
+def simmat_documents(corpus, matrix, tok_name, document_list):
 
-    doc_names = viewer.corpus.view_metadata[viewer.tok_name]
+    doc_names = corpus.view_metadata[tok_name]
 
-    doc_names_rev = dict((k,v) for k,v in doc_names.iteritems())
+    doc_names_int = zip(doc_names, xrange(len(doc_names)))
 
-    indices = [doc_names_rev[doc] for doc in document_list]
+    labels = [doc_names_int[doc] for doc in document_list]
     
-    simmat = similarity.simmat_columns(indices, viewer.matrix)
+    simmat = similarity.simmat_columns(labels, matrix)
 
-    simmat.indices = document_list
+    simmat.labels = document_list
 
     return simmat
 
 
 
-def similar_terms(viewer, term, filter_nan=False):
+def similar_terms(corpus, matrix, term, filter_nan=False):
 
-
-    i = viewer.corpus.terms_int[term]
+    i = corpus.terms_int[term]
     
-    cosines = similarity.similar_rows(i, viewer.matrix,
+    cosines = similarity.similar_rows(i, matrix,
                                       filter_nan=filter_nan)
     
-    return [(viewer.corpus.terms[t], v) for t,v in cosines]
+    return [(corpus.terms[t], v) for t,v in cosines]
 
 
 
-def similar_documents(viewer, document, filter_nan=False):
+def similar_documents(corpus, matrix, document, filter_nan=False):
+
+    doc_names = corpus.view_metadata[tok_name]
+
+    doc_names_int = zip(doc_names, xrange(len(doc_names)))
     
-    doc_names = viewer.corpus.view_metadata[viewer.tok_name]
-    
-    doc_names_rev = dict((k,v) for k,v in doc_names.iteritems())
-    
-    i = doc_names_rev[document]
+    i = doc_names_int[document]
     
     cosines = similarity.similar_columns(i, viewer.matrix,
                                          filter_nan=filter_nan)

@@ -32,13 +32,17 @@ def row_norms(matrix):
 
 
 
-def similar_rows(row_index, matrix,
+def similar_rows(row_index,
+                 matrix,
                  filter_nan=False,
+                 sort=True,
                  norms=None,
                  submat_size=def_submat_size):
     """
     """
     if sparse.issparse(matrix):
+
+        matrix = matrix.tocsr()
 
         nums = sparse_mvdot(matrix,
                             matrix[row_index:row_index+1, :].T,
@@ -58,13 +62,20 @@ def similar_rows(row_index, matrix,
 
     out = nums / dens
 
-    return sort_sim(out, filter_nan=filter_nan)
+    if filter_nan:
 
+        out = filter_nan(out)
+
+    if sort:
+        
+        out = sort_sim(out)
+    
+    return out
 
 
 def sparse_mvdot(m, v, submat_size=def_submat_size):
     """
-    For sparse matrices. The assumption is that a dense view of the
+    For sparse matrices. The expectation is that a dense view of the
     entire matrix is too large. So the matrix is split into
     submatrices (horizontal slices) which are converted to dense
     matrices one at a time.
@@ -88,6 +99,12 @@ def sparse_mvdot(m, v, submat_size=def_submat_size):
         m_rows = 1
 
         k_submats = m.shape[0]
+
+    elif submat_size > m.size:
+
+        m_rows = m.shape[0]
+
+        k_submats = 1
 
     else:
 
@@ -115,17 +132,17 @@ def sparse_mvdot(m, v, submat_size=def_submat_size):
 
 
 
+def filter_nan(results):
 
-def sort_sim(results, filter_nan=False):
+    return [(i,v) for i,v in results if np.isfinite(v)]
+
+
+
+def sort_sim(results):
     """
     """
     results = zip(xrange(results.shape[0]), results.tolist())
     
-    # Filter out undefined results
-
-    if filter_nan:
-        results = [(i,v) for i,v in results if np.isfinite(v)]
-        
     dtype = [('index', np.int), ('value', np.float)]
 
     # NB: numpy >= 1.4 sorts NaN to the end
@@ -150,7 +167,7 @@ def similar_columns(column, matrix, filter_nan=False):
 def simmat_rows(matrix, row_indices):
     """
     """
-    sim_matrix = SimilarityMatrix(row_indices)
+    sim_matrix = SimilarityMatrix(indices=row_indices)
     
     sim_matrix.compute(matrix)
 
@@ -161,7 +178,7 @@ def simmat_rows(matrix, row_indices):
 def simmat_columns(matrix, column_indices):
     """
     """
-    sim_matrix = SimilarityMatrix(column_indices)
+    sim_matrix = SimilarityMatrix(indices=column_indices)
 
     sim_matrix.compute(matrix.T)
 
@@ -173,46 +190,47 @@ def simmat_columns(matrix, column_indices):
 # TODO: Compress symmetric similarity matrix. Cf. scipy.spatial.distance.squareform
 class SimilarityMatrix(object):
 
-    def __init__(self, indices=None, matrix=None):
+    def __init__(self, indices=None, labels=None, matrix=None):
 
         self.indices = indices
+        
+        self.labels = labels
 
-        if matrix == None:
+        if matrix is None:
+
             self.matrix = np.zeros((len(self.indices), len(self.indices)))
 
 
-    def compute(self, data_matrix):
+
+    def compute(self, data):
         """
-        Comparisons are row-wise
+        Comparisons are row-wise.
+
+        Returns an upper triangular matrix.
         """
+        if sparse.issparse(data):
 
-        if sparse.issparse(data_matrix):
+            data = data.tocsr()
+        
+        data = data[self.indices]
 
-            row_fn.matrix = np.zeros((len(self.indices), data_matrix.shape[1]))
+        norms = row_norms(data)
 
-            for i in xrange(len(self.indices)):
-                row_fn.matrix[i,:] = data_matrix[self.indices[i],:].toarray()
+        for i in xrange(data.shape[0] - 1):
 
-        else:
-            row_fn.matrix = data_matrix[self.indices]
-            
+            results = similar_rows(0 , data, norms=norms, sort=False)
 
-        for idx_sim,idx in enumerate(self.indices):
+            self.matrix[i, i:] = results
 
-            row_fn.v = data_matrix[idx,:]
-            if sparse.issparse(row_fn.v):
-                row_fn.v = np.squeeze(row_fn.v.toarray())
+            data = data[1:, :]
 
-            p = Pool()
-            results = p.map(row_fn, range(idx_sim, len(self.indices)))
-            p.close()
+            norms = norms[1:]
 
-            values = zip(*results)[1]
+        i += 1
 
-            self.matrix[idx_sim,idx_sim:] = np.asarray(values)
+        results = similar_rows(0 , data, norms=norms, sort=False)
 
-        # Redundant representation of a symmetric matrix
-        self.matrix += self.matrix.T - np.diag(np.diag(self.matrix))
+        self.matrix[i, i:] = results
 
 
 
