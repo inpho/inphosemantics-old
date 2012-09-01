@@ -18,6 +18,10 @@ def row_norms(matrix):
 
     sp = sparse.issparse(matrix)
 
+    if sp:
+
+        matrix = matrix.tocsr()
+
     for i in xrange(norms.shape[0]):
 
         row = matrix[i:i+1, :]
@@ -29,6 +33,12 @@ def row_norms(matrix):
         norms[i] = np.dot(row, row.T)**0.5
         
     return norms
+
+
+
+def col_norms(matrix):
+
+    return row_norms(matrix.T)
 
 
 
