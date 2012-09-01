@@ -1,8 +1,7 @@
 import numpy as np
-from scipy import sparse
-from scipy.sparse import linalg
 
-# import sparsesvd as ssvd
+from scipy import sparse
+from scipy.sparse import linalg as linalgs
 
 from inphosemantics import model
 from inphosemantics.model import tfidf
@@ -10,66 +9,64 @@ from inphosemantics.model import tfidf
 # TODO: train needs either 1) a matrix or 2) corpus and tok_name;
 # provide feedback to this effect
 
-# TODO: tf-idf matrices are only one possible input matrix. Generalize
-# accordingly.
-
-# TODO: the reduction function should be a parameter.
-
 class LsaModel(model.Model):
     """
     """
-    def train(self, corpus=None, tok_name=None, tfidf_matrix=None):
+    def train(self,
+              corpus=None,
+              tok_name=None,
+              td_matrix=None,
+              k_factors=300):
 
-        if not tfidf_matrix:
+        if td_matrix is None:
 
             tfidf_model = tfidf.TfIdfModel()
+
             tfidf_model.train(corpus, tok_name)
             
-            tfidf_matrix = tfidf_model.matrix
+            td_matrix = tfidf_model.matrix
 
+            del tfidf_model
 
-        tfidf_matrix = sparse.csc_matrix(tfidf_matrix, dtype=np.float64)
+        if td_matrix.shape[0] < k_factors:
 
-
-        self.tfidf_matrix = tfidf_matrix
-
-        print 'Performing SVD'
-
-        u, s, v = linalg.svds(tfidf_matrix, k=300)
-        
-        u = np.float16(u)
-        s = np.float16(np.diag(s))
-        v = np.float16(v)
-
-        # print 'Reducing eigenvalue matrix'
-
-        # Reduction: the largest eigenvalues until their sum exceeds
-        # half the sum of all the eigenvalues
-
-        # rs = []
-
-        # acc = 0
-
-        # i = 0
-
-        # share = .5 * np.sum(s)
-
-        # while acc < share:
-
-        #     rs.append(s[i])
-
-        #     acc += s[i]
+            k_factors = td_matrix.shape[0] - 1
             
-        #     i += 1
+        if td_matrix.shape[1] < k_factors:
 
-        # print 'Retaining', i, 'eigenvalues out of', s.size
+            k_factors = td_matrix.shape[1] - 1
 
-        # rs = np.diag(s)
+        td_matrix = sparse.csc_matrix(td_matrix, dtype=np.float64)
 
-        # ru = u[:,:rs.shape[0]]
+        print 'Performing sparse SVD'
 
-        # rv = v[:rs.shape[1],:]
+        u, s, v = linalgs.svds(td_matrix, k=k_factors)
 
-        print 'Reconstructing term-document matrix'
+        self.matrix = np.float32(u), np.float32(s), np.float32(v)
 
-        self.matrix = np.dot(u, np.dot(s, v))
+        
+
+    @property
+    def term_matrix(self):
+
+        return self.matrix[0]
+
+
+
+    @property
+    def eigenvalues(self):
+
+        return self.matrix[1]
+
+
+
+    @property
+    def doc_matrix(self):
+
+        return self.matrix[2]
+        
+
+
+    def save_matrix(self, file):
+
+        print 'Not yet implemented'

@@ -68,18 +68,21 @@ def simmat_documents(corpus, matrix, tok_name, document_list):
 
 
 
-def similar_terms(corpus, matrix, term, filter_nan=False):
+def similar_terms(corpus, matrix, term,
+                  norms=None, filter_nan=False):
 
     i = corpus.terms_int[term]
     
     cosines = similarity.similar_rows(i, matrix,
+                                      norms=norms,
                                       filter_nan=filter_nan)
     
     return [(corpus.terms[t], v) for t,v in cosines]
 
 
 
-def similar_documents(corpus, matrix, document, filter_nan=False):
+def similar_documents(corpus, matrix, document,
+                      norms=None, filter_nan=False):
 
     doc_names = corpus.view_metadata[tok_name]
 
@@ -88,6 +91,7 @@ def similar_documents(corpus, matrix, document, filter_nan=False):
     i = doc_names_int[document]
     
     cosines = similarity.similar_columns(i, viewer.matrix,
+                                         norms=norms,
                                          filter_nan=filter_nan)
     
     return [(doc_names[d], v) for d,v in cosines]
