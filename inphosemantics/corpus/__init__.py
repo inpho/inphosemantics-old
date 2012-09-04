@@ -954,7 +954,11 @@ def mask_f1(corp_obj):
 
 
 
-def random_corpus(corpus_len, n_terms, min_token_len, max_token_len):
+def random_corpus(corpus_len,
+                  n_terms,
+                  min_token_len,
+                  max_token_len,
+                  tok_name='random'):
     """
     Generate a random integer corpus.
     """
@@ -970,6 +974,6 @@ def random_corpus(corpus_len, n_terms, min_token_len, max_token_len):
 
         i += np.random.randint(min_token_len, max_token_len)
 
-    c = Corpus(corpus, tok_names=['random'], tok_data=[indices])
+    c = Corpus(corpus, tok_names=[tok_name], tok_data=[indices])
 
     return c
