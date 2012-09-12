@@ -283,31 +283,35 @@ class BeagleOrderMulti(model.Model):
 
         
 
-        # For debugging
-        # tmp_files = map(mpfn, sent_lists)
+        try:
 
-        print 'Forking'
+            # For debugging
+            # tmp_files = map(mpfn, sent_lists)
+            
+            print 'Forking'
+            
+            p = mp.Pool()
+            
+            tmp_files = p.map(mpfn, sent_lists, 1)
+            
+            p.close()
+            
+            print 'Reducing'
+            
+            self.matrix = np.zeros(_shape)
+            
+            for filename in tmp_files:
+                
+                result = np.memmap(filename, mode='r',
+                                   shape=_shape, dtype=np.float32)
 
-        p = mp.Pool()
+                self.matrix[:, :] += result[:, :]
 
-        tmp_files = p.map(mpfn, sent_lists, 1)
+        finally:
 
-        p.close()
+            print 'Removing', tmp_dir
 
-        print 'Reducing'
-
-        self.matrix = np.zeros(_shape)
-
-        for filename in tmp_files:
-
-            result = np.memmap(filename, mode='r',
-                               shape=_shape, dtype=np.float32)
-
-            self.matrix[:, :] += result[:, :]
-
-        print 'Removing', tmp_dir
-
-        shutil.rmtree(tmp_dir)
+            shutil.rmtree(tmp_dir)
 
 
 

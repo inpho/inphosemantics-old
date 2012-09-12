@@ -32,17 +32,27 @@ class BeagleContextSingle(model.Model):
 
         for sent in sents:
 
-            for i,term in enumerate(sent):
+            if sent.shape[0] > 1:
 
-                left_ctx = sent[:i]
+                left_sums = np.cumsum(env_matrix[sent[:-1]], axis=0)
 
-                right_ctx = sent[i+1:]
+                right_sums = np.cumsum(env_matrix[sent[:0:-1]], axis=0)
 
-                ctx_vector = np.sum(env_matrix[left_ctx], axis=0)
+                for i,term in enumerate(sent):
 
-                ctx_vector += np.sum(env_matrix[right_ctx], axis=0)
+                    if i == 0:
 
-                self.matrix[term, :] += ctx_vector
+                        ctx_vector = right_sums[-1]
+
+                    elif i == sent.shape[0] - 1:
+                        
+                        ctx_vector = left_sums[-1]
+                    
+                    else:
+
+                        ctx_vector = left_sums[i - 1] + right_sums[-i - 1]
+
+                    self.matrix[term, :] += ctx_vector
 
 
 
@@ -104,33 +114,35 @@ class BeagleContextMulti(model.Model):
 
         del sent_lists_
 
+        try:
 
+            # For debugging
+            # tmp_files = map(mpfn, sent_lists)
 
-        # For debugging
-        # tmp_files = map(mpfn, sent_lists)
+            print 'Forking'
+            
+            p = mp.Pool()
+            
+            tmp_files = p.map(mpfn, sent_lists, 1)
+            
+            p.close()
 
-        print 'Forking'
+            print 'Reducing'
+            
+            self.matrix = np.zeros(_shape)
 
-        p = mp.Pool()
+            for filename in tmp_files:
 
-        tmp_files = p.map(mpfn, sent_lists, 1)
+                result = np.memmap(filename, mode='r',
+                                   shape=_shape, dtype=np.float32)
 
-        p.close()
+                self.matrix[:, :] += result[:, :]
 
-        print 'Reducing'
+        finally:
 
-        self.matrix = np.zeros(_shape)
+            print 'Removing', tmp_dir
 
-        for filename in tmp_files:
-
-            result = np.memmap(filename, mode='r',
-                               shape=_shape, dtype=np.float32)
-
-            self.matrix[:, :] += result[:, :]
-
-        print 'Removing', tmp_dir
-
-        shutil.rmtree(tmp_dir)
+            shutil.rmtree(tmp_dir)
 
 
 
@@ -142,23 +154,37 @@ def mpfn((sents, filename)):
 
     for sent in sents:
         
-        for i,t in enumerate(sent):
+        if sent.shape[0] > 1:
 
-            left_ctx = sent[:i]
-            
-            right_ctx = sent[i+1:]
+            left_sums = [np.array(_env_matrix[sent[0] * n:(sent[0] + 1) * n])]
 
-            ctx_vector = np.zeros(n)
+            right_sums = [np.array(_env_matrix[sent[-1] * n:(sent[-1] + 1) * n])]
 
-            for i in left_ctx:
+            for i in xrange(1, sent.shape[0] - 1):
 
-                ctx_vector += np.array(_env_matrix[i * n: (i + 1) *n])
+                next_left = np.array(_env_matrix[sent[i] * n:(sent[i] + 1) * n])
 
-            for i in right_ctx:
+                left_sums.append(left_sums[-1] + next_left)
 
-                ctx_vector += np.array(_env_matrix[i * n: (i + 1) *n])
+                next_right = np.array(_env_matrix[sent[-i - 1] * n:(sent[-i - 1] + 1) * n])
 
-            result[t] += ctx_vector
+                right_sums.append(right_sums[-1] + next_right)
+
+            for i,t in enumerate(sent):
+                
+                if i == 0:
+
+                    ctx_vector = right_sums[-1]
+
+                elif i == sent.shape[0] - 1:
+                        
+                    ctx_vector = left_sums[-1]
+                    
+                else:
+
+                    ctx_vector = left_sums[i - 1] + right_sums[-i - 1]
+                    
+                result[t, :] += ctx_vector
 
     del result
     
@@ -167,7 +193,7 @@ def mpfn((sents, filename)):
 
 
 
-class BeagleContext(BeagleContextSingle):
+class BeagleContext(BeagleContextMulti):
 
     pass
 
@@ -183,9 +209,9 @@ def test_BeagleContextSingle():
 
     from inphosemantics import corpus
 
-    n = 256
+    n = 2048
 
-    c = corpus.random_corpus(1e4, 1e2, 1, 20, tok_name='sentences')
+    c = corpus.random_corpus(1e5, 1e4, 1, 20, tok_name='sentences')
     
     m = BeagleContextSingle()
 
@@ -203,7 +229,7 @@ def test_BeagleContextMulti():
 
     print 'Generating corpus'
     
-    c = corpus.random_corpus(1e7, 1e5, 1, 20, tok_name='sentences')
+    c = corpus.random_corpus(1e5, 1e4, 1, 20, tok_name='sentences')
 
     m = BeagleContextMulti()
 
@@ -239,4 +265,4 @@ def test_compare():
 
     mm.train(c, env_matrix=env_matrix)
 
-    assert np.allclose(sm.matrix, mm.matrix, atol=1e-07)
+    assert np.allclose(sm.matrix, mm.matrix, atol=1e-07), (sm.matrix[:2], mm.matrix[:2])
