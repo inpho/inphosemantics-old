@@ -6,11 +6,11 @@ from inphosemantics.model import Model
 
 class BeagleEnvironment(Model):
 
-    def train(self, corpus, n_columns=2048):
+    def train(self, corpus, n_columns=2048, dtype=np.float32):
 
         shape = (corpus.terms.shape[0], n_columns)
 
-        self.matrix = np.float32(np.random.random(shape))
+        self.matrix = dtype(np.random.random(shape))
         self.matrix *= 2
         self.matrix -= 1
 

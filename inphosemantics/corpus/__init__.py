@@ -2,6 +2,10 @@ import numpy as np
 
 
 
+#TODO: Documentation update.
+
+
+
 class BaseCorpus(object):
     """
     A BaseCorpus object stores a corpus along with its tokenizations
@@ -19,7 +23,7 @@ class BaseCorpus(object):
     corpus : array-like
         Array, typically of strings or integers, of atomic terms (or
         tokens) making up the corpus.
-    tok_data : list-like with 1-D integer array-like elements, optional
+    tok_data : list with 1-D array-like elements, optional
         Each element in `tok_data` is an array containing the indices
         marking the token boundaries. An element in `tok_data` is
         intended for use as a value for the `indices_or_sections`
@@ -45,26 +49,16 @@ class BaseCorpus(object):
     terms : 1-D array
         The indexed set of atomic terms appearing in `corpus`.
         Computed on initialization by `_extract_terms`.
-    tok : dict with 1-D numpy arrays as values
-        The tokenization dictionary. Stems of key names are given by
-        `tok_names`. A key name whose value is the array of indices
-        for a tokenization has the suffix '_indices'. A key name whose
-        value is the metadata array for a tokenization has the suffix
-        '_metadata'.
+    tok_names: 1-D array-like
+
+    tok_data: list of 1-D array-like
 
     Methods
     -------
     view_tokens
         Takes a name of tokenization and returns a view of the corpus
         tokenized accordingly.
-    validate_tokens
-        Static method. Takes a BaseCorpus-like object and verifies
-        that the tokenizations are sorted and in range.
-    extract_terms
-        Static method. Takes an array-like object and returns an
-        indexed set of the elements in the object as a 1-D numpy
-        array.
-
+    view_metadata
 
     Examples
     --------
@@ -102,71 +96,41 @@ class BaseCorpus(object):
 
         self.corpus = np.asarray(corpus, dtype=dtype)
 
-        self.terms = self.extract_terms(self.corpus,
-                                        dtype=self.corpus.dtype)
+        self._extract_terms()
 
-        self.tok = dict()
+        self.tok_data = list()
 
         if tok_data:
 
             for i,t in enumerate(tok_data):
                 
-                try:
+                try: #if the tokenization has metadata
 
-                    # Suppose that `t` is array-like with tuple-like
-                    # elements (i.e., it has metadata)
-
-                    indices, metadata = zip(*t)
-
-                    indices = np.asarray(indices)
-                    metadata = np.asarray(metadata)
-
-                    if self._validate_metadata(indices, metadata):
-                        self.tok[tok_names[i] + '_metadata'] = metadata
-
+                    indices = [i for i,m in t]
+                        
                 except TypeError:
 
-                    # Suppose instead that `t` has unsubscriptable
-                    # elements (i.e., it has no metadata)
-
-                    indices = np.asarray(t)
-
+                    indices = t
 
                 if self._validate_indices(indices):
 
-                    # Trim breaks at the end of the corpus.
-                    # (Otherwise, `np.split` leaves a trailing empty
-                    # float-typed array in `view_tokens`.)
-                
-                    while (indices.shape[0] != 0 and
-                           indices[-1] == self.corpus.shape[0]):
+                    self.tok_data.append(t)
 
-                        indices = indices[:-1]
-                    
-                    self.tok[tok_names[i] + '_indices'] = indices
+        self._gen_tok_names(tok_names)
 
 
-                
-    @property
-    def tok_names(self):
-        """
-        Returns a list of names of the available tokenizations.
-        """
-        names = []
-        
-        for t in self.tok:
 
-            if t.endswith('_indices'):
-                
-                names.append(t[:-8])
+    def _gen_tok_names(self, tok_names):
 
-        return names
-        
+        if self.tok_data:
 
-        
-    def __getitem__(self, i):
+            a = len(tok_names) if tok_names else 0
 
-        return self.corpus[i]
+            for i in xrange(a, len(self.tok_data)):
+
+                tok_names.append('tok_' + str(i))
+
+        self.tok_names = tok_names
 
 
 
@@ -196,18 +160,14 @@ class BaseCorpus(object):
 
         for i,j in enumerate(indices):
                     
-            if i < len(indices)-1 and j > indices[i+1]:
+            if i < len(indices) - 1 and j > indices[i + 1]:
 
                 msg = 'malsorted tokenization:'\
-                      ' tok ' + str(j) + ' and ' + str(indices[i+1])
+                      ' tok ' + str(j) + ' and ' + str(indices[i + 1])
 
                 raise Exception(msg)
                     
             if j > self.corpus.shape[0]:
-
-                print type(j)
-                        
-                print indices[-30:]
 
                 msg = 'invalid tokenization'\
                       ' : ' + str(j) + ' is out of range ('\
@@ -219,51 +179,48 @@ class BaseCorpus(object):
 
 
 
-    @staticmethod
-    def _validate_metadata(indices, metadata):
+    def _get_indices(self, name):
+
+        i = self.tok_names.index(name)
+
+        try: #if tokenization has metadata
+
+            return np.asarray([j for j,m in self.tok_data[i]])
+
+        except TypeError:
+
+            return np.asarray(self.tok_data[i])
+
+
+
+    def view_metadata(self, name):
         """
-        Verifies that if there is metadata, there is an item of
-        metadata for and only for each index.
+        Displays the metadata corresponding to a tokenization of the
+        corpus.
 
         Parameters
         ----------
-        indices : 1-D integer array-like
-
-        metadata : 1-D array-like
+        name : string-like
+            The name of a tokenization.
 
         Returns
         -------
-        True if metadata is validated.
-
-        Raises
-        ------
-        Exception
+        The metadata for a tokenization.
 
         See Also
         --------
         BaseCorpus
         """
-        if len(indices) != len(metadata):
+        i = self.tok_names.index(name)
 
-            msg = 'Mismatch between indices and metadata:\n'\
-                  '  ' + str(len(indices)) + ' indices\n'\
-                  '  ' + str(len(metadata)) + ' metadata'
-            
-            raise Exception(msg)
+        try: #if the metadata exists
 
-        return True
+            return [m for j,m in self.tok_data[i]]
 
+        except TypeError:
 
-
-    def get_indices(self, name):
-
-        return self.tok[name + '_indices']
-
-
-
-    def get_metadata(self, name):
-
-        return self.tok[name + '_metadata']
+            print 'There is no metadata associated with tokenization '\
+                  "'" + name + "'"
 
 
 
@@ -286,40 +243,23 @@ class BaseCorpus(object):
         numpy.split
 
         """
-        return np.split(self.corpus, self.get_indices(name))
+        indices = self._get_indices(name)
+        
+        tokens = np.split(self.corpus, indices)
+
+        # np.split leaves a trailing empty array if the final index is
+        # the length of the corpus. Remove it to maintain
+        # correspondence with metadata.
+        
+        if indices[-1] == self.corpus.shape[0]:
+
+            del tokens[-1]
+
+        return tokens
 
 
     
-    def view_metadata(self, name):
-        """
-        Displays the metadata corresponding to a tokenization of the
-        corpus.
-
-        Parameters
-        ----------
-        name : string-like
-            The name of a tokenization.
-
-        Returns
-        -------
-        The metadata for a tokenization.
-
-        See Also
-        --------
-        BaseCorpus
-        """
-        k = name + '_metadata'
-
-        if k in self.tok:
-
-            return self.tok[k]
-        
-        return None
-
-
-
-    @staticmethod
-    def extract_terms(corpus, dtype=None):
+    def _extract_terms(self):
         """
         Produces an indexed set of terms from a corpus.
         
@@ -337,16 +277,17 @@ class BaseCorpus(object):
         
         Notes
         -----
-        Python uniquifier by Peter Bengtsson
-        (http://www.peterbe.com/plog/uniqifiers-benchmark)
         """
+
+        # Benchmarked by Peter Bengtsson
+        # (http://www.peterbe.com/plog/uniqifiers-benchmark)
         
         term_set = set()
         
-        term_list = [term for term in corpus
+        term_list = [term for term in self.corpus
                      if term not in term_set and not term_set.add(term)]
         
-        return np.array(term_list, dtype=dtype)
+        self.terms = np.array(term_list, dtype=self.corpus.dtype)
 
 
 
@@ -481,6 +422,7 @@ class Corpus(BaseCorpus):
         self.__set_terms_int()
 
         # Integer encoding of a string-type corpus
+
         self.corpus = np.asarray([self.terms_int[term]
                                   for term in self.corpus],
                                  dtype=np.int32)
@@ -491,9 +433,7 @@ class Corpus(BaseCorpus):
         """
         Mapping of terms to their integer representations.
         """
-        self.terms_int = dict(zip(self.terms.tolist(),
-                                  xrange(self.terms.size)))
-
+        self.terms_int = dict((t,i) for i,t in enumerate(self.terms))
 
 
     def view_tokens(self, name, strings=False):
@@ -542,6 +482,26 @@ class Corpus(BaseCorpus):
 
 
 
+    def to_maskedcorpus(self):
+        """
+        Converts `self` to a MaskedCorpus with no mask.
+        """
+        m = MaskedCorpus([])
+
+        m.corpus = np.ma.array(self.corpus)
+
+        m.terms = np.ma.array(self.terms)
+
+        m.terms_int = self.terms_int
+
+        m.tok_names = self.tok_names
+
+        m.tok_data = self.tok_data
+        
+        return m
+
+
+
     @staticmethod
     def load(file):
         """
@@ -571,23 +531,47 @@ class Corpus(BaseCorpus):
         arrays_in = np.load(file)
 
         c = Corpus([])
-        
-        if 'corpus' in arrays_in:
-            c.corpus = arrays_in['corpus']
+
+        c.corpus = arrays_in['corpus']
 
         c.terms = arrays_in['terms']
 
-        c.__set_terms_int()
+        c.tok_names = arrays_in['tok_names'].tolist()
 
-        for k in arrays_in:
-            if k.endswith('_indices') or k.endswith('_metadata'):
-                c.tok[k] = arrays_in[k]
+        c.tok_data = list()
+
+        for n in c.tok_names:
+
+            t = arrays_in['tok_data_' + n].tolist()
+
+            c.tok_data.append(t)
+
+        c.__set_terms_int()
 
         return c
 
 
 
-    def save(self, file, terms_only=False):
+    def _tok_to_recarray(self, i):
+
+        try: # if tokenization has metadata
+            
+            indices, metadata = zip(*self.tok_data[i])
+                           
+            metadata_type = np.asarray(metadata).dtype
+
+            dtype = [('indices', np.int),
+                     ('metadata', metadata_type)]
+
+            return np.array(self.tok_data[i], dtype=dtype)
+
+        except TypeError:
+            
+            return np.asarray(self.tok_data[i], dtype=np.int)
+
+
+        
+    def save(self, file):
         """
         Saves data from a Corpus object as an `npz` file.
         
@@ -596,8 +580,6 @@ class Corpus(BaseCorpus):
         file : str-like or file-like object
             Designates the file to which to save data. See
             `numpy.savez` for further details.
-        terms_only : boolean
-            Save only the terms. Default is `False`.
             
         Returns
         -------
@@ -613,18 +595,19 @@ class Corpus(BaseCorpus):
         
         arrays_out = dict()
         
-        if not terms_only:
-
-            arrays_out.update(self.tok)
-            arrays_out['corpus'] = self.corpus
-
+        arrays_out['corpus'] = self.corpus
         
         arrays_out['terms'] = self.terms
 
+        arrays_out['tok_names'] = np.asarray(self.tok_names)
+
+        for i in xrange(len(self.tok_data)):
+
+            key = 'tok_data_' + self.tok_names[i]
+
+            arrays_out[key] = self._tok_to_recarray(i)
+
         np.savez(file, **arrays_out)
-
-
-
 
 
 
@@ -645,13 +628,9 @@ class MaskedCorpus(Corpus):
 
         self.terms = np.ma.array(self.terms)
 
-        # Generate mask from `masked_terms`
-
         if masked_terms:
 
-            f = np.vectorize(lambda t: t in masked_terms)
-    
-            self.mask_terms(f(self.terms))
+            self.mask_terms(masked_terms)
 
 
 
@@ -660,33 +639,22 @@ class MaskedCorpus(Corpus):
         Mapping of terms to their integer representations.
         """
 
-        self.terms_int = dict(zip(self.terms.data,
-                                  np.arange(self.terms.size)))
+        self.terms_int = dict((t,i) for i,t in enumerate(self.terms.data))
 
 
-
-    def mask_term(self, term):
+    def mask_terms(self, term_list):
         """
+
+        """
+        f = np.vectorize(lambda t: t is np.ma.masked or t in term_list)
+
+        term_mask = f(self.terms)
         
-        Parameters
-        ----------
-        term : string-like
-        
-    
-        """
-        self.mask_terms(self.terms == term)
-
-
-
-    def mask_terms(self, term_mask):
-        """
-
-        """
         self.terms = np.ma.masked_where(term_mask, self.terms, copy=False)
 
-        f = np.vectorize(lambda t: t is np.ma.masked or term_mask[t])
+        g = np.vectorize(lambda t: t is np.ma.masked or term_mask[t])
 
-        corpus_mask = f(self.corpus)
+        corpus_mask = g(self.corpus)
 
         self.corpus = np.ma.masked_where(corpus_mask, self.corpus, copy=False)
 
@@ -702,7 +670,7 @@ class MaskedCorpus(Corpus):
 
 
 
-    def view_tokens(self, name, strings=False):
+    def view_tokens(self, name, strings=False, compress=False):
         """
         Displays a tokenization of the corpus.
 
@@ -726,37 +694,39 @@ class MaskedCorpus(Corpus):
         BaseCorpus
         """
 
-        #TODO: the references to the original mask do not persist
-        #after `numpy.split`
+        #NB: the references to the original mask do not persist
+        #after `numpy.split` (issue in numpy.ma)
         
-        token_list = super(Corpus, self).view_tokens(name)
+        token_list_ = super(Corpus, self).view_tokens(name)
 
-        if strings:
+        token_list = list()
 
-            token_list_ = []
+        for t in token_list_:
 
-            for i,token in enumerate(token_list):
+            if compress:
 
-                if isinstance(token, np.ma.MaskedArray):
+                token = t.compressed()
+
+                if strings:
+
+                    token = np.array([self.terms[t_]
+                                      for t_ in token], dtype=np.string_)
+
+            else:
+
+                if strings:
+
+                    token = np.ma.array(t, mask=t.mask, dtype=np.string_)
+
+                elif t.shape[0] == 0:
+
+                    token = np.ma.array([], dtype=np.corpus.dtype)
                     
-                    token_str = [self.terms[t] for t in token.data]
-
-                    token_str = np.ma.array(token_str, mask=token.mask, dtype=np.str_)
-
                 else:
 
-                    token_str = [self.terms[t] for t in token]
+                    token = t
 
-                    token_str = np.ma.array(token_str, dtype=np.str_)
-                    
-                token_list_.append(token_str)
-
-            token_list = token_list_
-
-        else:
-            
-            token_list = [np.ma.asarray(token, dtype=self.corpus.dtype)
-                          for token in token_list]
+            token_list.append(token)
 
         return token_list
 
@@ -809,7 +779,7 @@ class MaskedCorpus(Corpus):
 
 
 
-    def save(self, file, terms_only=False, compressed=False):
+    def save(self, file, terms_only=False, compress=False):
         """
         Saves data from a MaskedCorpus object as an `npz` file.
         
@@ -832,7 +802,7 @@ class MaskedCorpus(Corpus):
         MaskedCorpus.load
         numpy.savez
         """
-        if compressed:
+        if compress:
 
             self.compressed_corpus().save(file, terms_only=terms_only)
 
@@ -856,101 +826,61 @@ class MaskedCorpus(Corpus):
 
 
 
-    def compressed_corpus(self):
+    def to_corpus(self, compress=False):
         """
         Returns a Corpus object containing the data from the
-        compressed MaskedCorpus object.
+        MaskedCorpus object.
         """
+        if compress:
 
-        print 'Compressing corpus terms'
+            print 'Compressing corpus terms'
 
-        # Reconstruct string representation of corpus
-        corpus = [self.terms[term] for term in self.corpus.compressed()]
+            # Reconstruct string representation of corpus
+            corpus = [self.terms[term] for term in self.corpus.compressed()]
 
-        tok_names = self.tok_names
+            tok_names = self.tok_names
 
-        tok_data = []
+            tok_data = []
 
-        for name in self.tok_names:
+            for name in self.tok_names:
 
-            print 'Realigning tokenization:', name
+                print 'Realigning tokenization:', name
 
-            tokens = self.view_tokens(name)
-
-            meta = self.view_metadata(name)
+                tokens = self.view_tokens(name, compress=True)
+                
+                meta = self.view_metadata(name)
             
-            spans = [token.compressed().shape[0] for token in tokens]
+                spans = [token.shape[0] for token in tokens]
 
-            indices = np.cumsum(spans)
+                indices = np.cumsum(spans)
             
-            if meta == None:
+                if meta == None:
+                    
+                    tok_data.append(indices)
 
-                tok_data.append(indices)
+                else:
 
-            else:
+                    tok_data.append(zip(indices, meta))
 
-                tok_data.append(zip(indices, meta))
+            return Corpus(corpus,
+                          tok_names=tok_names,
+                          tok_data=tok_data)
 
+        else:
 
+            c = Corpus([])
 
-        return Corpus(corpus,
-                      tok_names=tok_names,
-                      tok_data=tok_data)
+            c.corpus = self.corpus.data
 
+            c.terms = self.terms.data
 
+            c.terms_int = self.terms_int
+            
+            c.tok_names = self.tok_names
 
+            c.tok_data = self.tok_data
 
-
-
-
-############################################################################
-#                         Masking functions                                                                                ############################################################################
-
-
-
-def mask_from_stoplist(corp_obj, stoplist):
-    """
-    Takes a MaskedCorpus object and masks all terms that occur in the
-    stoplist. The operation is in-place.
-    """
-    f = np.vectorize(lambda t: t is np.ma.masked or t in stoplist)
-
-    corp_obj.mask_terms(f(corp_obj.terms))
-
-
-
-def mask_from_golist(corp_obj, golist):
-    """
-    Takes a MaskedCorpus object and masks all terms that do not occur
-    in the golist. Does not unmask already masked entries. The
-    operation is in-place.
-    """
-    f = np.vectorize(lambda t: t is np.ma.masked or t not in golist)
-
-    corp_obj.mask_terms(f(corp_obj.terms))
-
-
-
-def mask_f1(corp_obj):
-    """
-    Takes a MaskedCorpus object and masks all terms that occur only
-    once in the corpus. The operation is in-place.
-    """
-    print 'Computing collection frequencies'
-    
-    cfs = dict(zip(xrange(corp_obj.terms.shape[0]),
-                   (0 for i in xrange(corp_obj.terms.shape[0]))))
-
-    for term in corp_obj.corpus.data:
-
-        cfs[term] += 1
-
-    print 'Masking frequency 1 terms'
-
-    mask = [(lambda t: cfs[t] == 1)(corp_obj.terms_int[t])
-            for t in corp_obj.terms.data]
-
-    corp_obj.mask_terms(mask)
+            return c
 
 
 
@@ -958,7 +888,8 @@ def random_corpus(corpus_len,
                   n_terms,
                   min_token_len,
                   max_token_len,
-                  tok_name='random'):
+                  tok_name='random',
+                  metadata=False):
     """
     Generate a random integer corpus.
     """
@@ -974,6 +905,166 @@ def random_corpus(corpus_len,
 
         i += np.random.randint(min_token_len, max_token_len)
 
-    c = Corpus(corpus, tok_names=[tok_name], tok_data=[indices])
+    indices.append(corpus_len)
+
+    if metadata:
+
+        metadata_ = ['token_' + str(i)
+                     for i in xrange(len(indices))]
+
+        rand_tok = zip(indices, metadata_)
+
+    else:
+
+        rand_tok = indices
+            
+    c = Corpus(corpus, tok_names=[tok_name], tok_data=[rand_tok])
 
     return c
+
+
+
+def test_corpus_conversion():
+
+    c = random_corpus(1e4, 20, 1, 10, metadata=True)
+
+    mc = c.to_maskedcorpus()
+
+    cb = mc.to_corpus(compress=False)
+
+    assert (c.corpus == cb.corpus).all()
+
+    assert (c.terms == cb.terms).all()
+
+    assert c.tok_names == cb.tok_names
+
+    assert c.tok_data == cb.tok_data
+
+    cbc = mc.to_corpus(compress=True)
+
+    assert (c.corpus == cbc.corpus).all()
+
+    assert (c.terms == cbc.terms).all()
+
+    assert c.tok_names == cbc.tok_names
+
+    assert c.tok_data == cbc.tok_data
+
+
+
+def test_compression():
+
+    c = random_corpus(1e4, 20, 1, 10, metadata=True)
+
+    c = c.to_maskedcorpus()
+
+    stoplist = [str(np.random.randint(0, 20)) for i in xrange(3)]
+
+    mask_from_stoplist(c, stoplist)
+
+    cc = c.to_corpus(compress=True)
+
+    t1 = c.view_tokens('random', compress=True, strings=True)
+
+    t2 = cc.view_tokens('random', strings=True)
+
+    assert len(t1) == len(t2)
+
+    for i in xrange(len(t1)):
+
+        assert t1[i].shape[0] == t2[i].shape[0]
+
+        assert t1[i].dtype == t2[i].dtype
+
+        assert (t1[i] == t2[i]).all()
+
+
+        
+def test_view_tok():
+
+    c = random_corpus(1e3, 10, 1, 5, metadata=True)
+
+    c = c.to_maskedcorpus()
+
+    mask_from_stoplist(c, ['0'])
+
+    print c.view_tokens('random', compress=False, strings=False)
+
+    print c.view_tokens('random', compress=True, strings=False)
+
+    print c.view_tokens('random', compress=False, strings=True)
+    
+    print c.view_tokens('random', compress=True, strings=True)
+
+    return c
+
+
+    
+def test_file():
+
+    c = random_corpus(1e4, 5e2, 1, 20, tok_name='foo', metadata=True)
+
+    c.save('/tmp/foo.npz')
+
+    c_reloaded = c.load('/tmp/foo.npz')
+
+    assert (c.corpus == c_reloaded.corpus).all()
+
+    assert (c.terms == c_reloaded.terms).all()
+
+    assert c.terms_int == c_reloaded.terms_int
+
+    assert c.tok_names == c_reloaded.tok_names
+    
+    for i in xrange(len(c.tok_data)):
+        
+        assert c.tok_data[i] == c_reloaded.tok_data[i]
+
+    return c, c_reloaded
+
+
+
+############################################################################
+#                         Masking functions                                                                                ############################################################################
+
+
+
+def mask_from_stoplist(corp_obj, stoplist):
+    """
+    Takes a MaskedCorpus object and masks all terms that occur in the
+    stoplist. The operation is in-place.
+    """
+    corp_obj.mask_terms(stoplist)
+
+
+
+def mask_from_golist(corp_obj, golist):
+    """
+    Takes a MaskedCorpus object and masks all terms that do not occur
+    in the golist. Does not unmask already masked entries. The
+    operation is in-place.
+    """
+    indices = [corp_obj.terms_int[t] for t in golist if t in corp_obj.terms]
+    
+    corp_obj.mask_terms(corp_obj.terms[indices])
+
+
+
+def mask_f1(corp_obj):
+    """
+    Takes a MaskedCorpus object and masks all terms that occur only
+    once in the corpus. The operation is in-place.
+    """
+    print 'Computing collection frequencies'
+
+    cfs = np.zeros_like(corp_obj.terms, dtype=corp_obj.corpus.dtype)
+    
+    for term in corp_obj.corpus.data:
+
+        cfs[term] += 1
+
+    print 'Masking frequency 1 terms'
+
+    term_list = corp_obj.terms.data[(cfs == 1)]
+
+    corp_obj.mask_terms(term_list)

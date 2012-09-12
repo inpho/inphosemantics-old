@@ -1,8 +1,10 @@
+import os
+import shutil
+import tempfile
 import multiprocessing as mp
 
 import numpy as np
 from numpy import dual
-
 
 from inphosemantics import model
 from inphosemantics.model import beagleenvironment as be
@@ -158,17 +160,11 @@ class BeagleOrderSingle(model.Model):
 
             env_matrix = m.matrix[:, :]
 
-        else:
-
-            #TODO: Catch if user has a mismatch here
-
-            n_columns = env_matrix.shape[1]
-
         b_conv = mk_b_conv(n_columns, rand_perm)
 
         if psi is None:
 
-            psi = rand_pt_unit_sphere(n_columns)
+            psi = rand_pt_unit_sphere(env_matrix.shape[1])
 
         self.matrix = np.zeros_like(env_matrix)
 
@@ -190,7 +186,7 @@ class BeagleOrderSingle(model.Model):
 
                 self.matrix[sent[i], :] += ord_vec
 
-                
+
 
 class BeagleOrderMulti(model.Model):
 
@@ -201,8 +197,25 @@ class BeagleOrderMulti(model.Model):
               rand_perm=None,
               n_columns=2048,
               lmda = 7,
-              tok_name='sentences'):
+              tok_name='sentences',
+              processes=20):
+
+        global _lmda
+
+        _lmda = lmda
+
+        del lmda
+
+
+
+        global _b_conv
         
+        _b_conv = mk_b_conv(n_columns, rand_perm)
+
+        del rand_perm
+
+
+
         if env_matrix is None:
 
             m = be.BeagleEnvironment()
@@ -211,76 +224,120 @@ class BeagleOrderMulti(model.Model):
 
             env_matrix = m.matrix[:]
 
-        else:
+            del m
 
-            #TODO: Catch if user has a mismatch here
+        global _shape
 
-            n_columns = env_matrix.shape[1]
+        _shape = env_matrix.shape
 
-        b_conv = mk_b_conv(n_columns, rand_perm)
+
+        
+        global _env_matrix
+
+        print 'Copying env matrix to shared mp array'
+
+        _env_matrix = mp.Array('f', env_matrix.size, lock=False)
+
+        _env_matrix[:] = env_matrix.ravel()[:]
+
+        del env_matrix
+
+
+
+        global _psi
+
+        _psi = mp.Array('f', _shape[1], lock=False)
 
         if psi is None:
+            
+            _psi[:] = rand_pt_unit_sphere(_shape[1])[:]
 
-            psi = rand_pt_unit_sphere(n_columns)
+        else:
 
-        self.matrix = np.zeros_like(env_matrix)
+            _psi[:] = psi[:]
 
-        print 'Mapping'
+        del psi
 
-        sents = corpus.view_tokens(tok_name)
 
-        mpfn.env_matrix = env_matrix[:]
 
-        mpfn.psi = psi[:]
+        print 'Gathering tokens over which to map'
 
-        mpfn.b_conv = b_conv
+        sent_lists = corpus.view_tokens(tok_name)
 
-        mpfn.lmda = lmda
+        k = len(sent_lists) / (n_processes - 1)
+        
+        sent_lists_ = [sent_lists[i * k:(i + 1) * k]
+                       for i in xrange(n_processes - 1)]
+
+        sent_lists_.append(sent_lists[(i + 1) * k:])
+
+        tmp_dir = tempfile.mkdtemp()
+        
+        tmp_files = [os.path.join(tmp_dir, 'tmp_' + str(i))
+                     for i in xrange(len(sent_lists_))]
+
+        sent_lists = [(sent_lists_[i], tmp_files[i])
+                      for i in xrange(len(sent_lists_))]
+
+        del sent_lists_
+
+        
 
         # For debugging
-        # results = map(mpfn, sents)
+        # tmp_files = map(mpfn, sent_lists)
+
+        print 'Forking'
 
         p = mp.Pool()
 
-        results = p.map(mpfn, sents, 1000)
+        tmp_files = p.map(mpfn, sent_lists, 1)
 
         p.close()
 
         print 'Reducing'
 
-        for result in results:
+        self.matrix = np.zeros(_shape)
 
-            for term, vec in result.iteritems():
+        for filename in tmp_files:
 
-                self.matrix[term, :] += vec
+            result = np.memmap(filename, mode='r',
+                               shape=_shape, dtype=np.float32)
+
+            self.matrix[:, :] += result[:, :]
+
+        print 'Removing', tmp_dir
+
+        shutil.rmtree(tmp_dir)
 
 
 
-def mpfn(sent):
+def mpfn((sents, filename)):
 
-    result = dict()
+    n = _shape[1]
 
-    for i,t in enumerate(sent):
+    result = np.memmap(filename, mode='w+', shape=_shape, dtype=np.float32)
+
+    for sent in sents:
+
+        for i,t in enumerate(sent):
+
+            left = [np.asarray(_env_matrix[term * n:(term + 1) * n])
+                    for term in sent[:i]]
         
-        left = [mpfn.env_matrix[term] for term in sent[:i]]
+            right = [np.asarray(_env_matrix[term * n:(term + 1) * n])
+                     for term in sent[i + 1:]]
         
-        right = [mpfn.env_matrix[term] for term in sent[i+1:]]
+            sent_vecs = np.array(left + [_psi] + right)
         
-        sent_vecs = np.array(left + [mpfn.psi] + right)
-        
-        conv_ngrams = reduce_ngrams(mpfn.b_conv, sent_vecs, mpfn.lmda, i)
-        
-        ord_vec = np.sum(conv_ngrams, axis=0)
-
-        if t in result:
+            conv_ngrams = reduce_ngrams(_b_conv, sent_vecs, _lmda, i)
             
+            ord_vec = np.sum(conv_ngrams, axis=0)
+
             result[t] += ord_vec
 
-        else:
-
-            result[t] = ord_vec
-
-    return result
+    del result
+    
+    return filename
 
 
 
@@ -291,24 +348,8 @@ class BeagleOrder(BeagleOrderMulti):
 
 
 #
-# Tests
+# For testing
 #
-
-
-
-def test_BeagleOrderMulti():
-
-    from inphosemantics import corpus
-
-    n = 256
-
-    c = corpus.random_corpus(1e5, 1e2, 1, 10, tok_name='sentences')
-
-    m = BeagleOrderMulti()
-
-    m.train(c, n_columns=n)
-
-    return m.matrix
 
 
 
@@ -318,13 +359,32 @@ def test_BeagleOrderSingle():
 
     n = 256
 
-    c = corpus.random_corpus(1e5, 5e3, 1, 20, tok_name='sentences')
-
+    c = corpus.random_corpus(1e4, 1e2, 1, 20, tok_name='sentences')
+    
     m = BeagleOrderSingle()
 
     m.train(c, n_columns=n)
 
     return m.matrix
+
+
+
+def test_BeagleOrderMulti():
+
+    from inphosemantics import corpus
+
+    n = 2048
+
+    print 'Generating corpus'
+    
+    c = corpus.random_corpus(1e7, 1e5, 1, 20, tok_name='sentences')
+
+    m = BeagleOrderMulti()
+
+    m.train(c, n_columns=n)
+
+    return m.matrix
+
 
 
 def test_compare():
@@ -357,10 +417,8 @@ def test_compare():
 
     mm.train(c, psi=psi, env_matrix=env_matrix, rand_perm=rand_perm)
 
-    print np.allclose(sm.matrix, mm.matrix)
+    assert np.allclose(sm.matrix, mm.matrix, atol=1e-07)
 
-    return sm, mm
-    
 
 
 
