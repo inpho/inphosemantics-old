@@ -465,21 +465,16 @@ class Corpus(BaseCorpus):
 
             token_list_ = []
 
-            for i,token in enumerate(token_list):
+            for token in token_list:
 
-                token_str = [self.terms[t] for t in token]
+                token = self.terms[token]
 
-                token_list_.append(np.array(token_str, dtype=np.str_))
+                token_list_.append(token)
 
-            token_list = token_list_
-
-        else:
+            return token_list_
             
-            token_list = [np.asarray(token, dtype=self.corpus.dtype)
-                          for token in token_list]
-
-        return token_list
-
+        return [np.asarray(token, dtype=self.corpus.dtype)
+                for token in token_list]
 
 
     def to_maskedcorpus(self):
@@ -670,7 +665,7 @@ class MaskedCorpus(Corpus):
 
 
 
-    def view_tokens(self, name, strings=False, compress=False):
+    def view_tokens(self, name, as_strings=False, unmask=False, compress=False):
         """
         Displays a tokenization of the corpus.
 
@@ -678,7 +673,7 @@ class MaskedCorpus(Corpus):
         ----------
         name : string-like
            The name of a tokenization.
-        strings : Boolean, optional
+        as_strings : Boolean, optional
             If True, string representations of terms are returned.
             Otherwise, integer representations are returned. Default
             is `False`.
@@ -703,28 +698,37 @@ class MaskedCorpus(Corpus):
 
         for t in token_list_:
 
-            if compress:
+            #np.split does not cast size 0 arrays as masked arrays. So
+            #we'll do it.
+            if t.size == 0:
+
+                t = np.ma.array(t, dtype=self.corpus.dtype)
+
+            if unmask:
+
+                token = t.data
+
+                if as_strings:
+
+                    token = np.array(self.terms[token], dtype=np.str_)
+
+            elif compress:
 
                 token = t.compressed()
 
-                if strings:
+                if as_strings:
 
-                    token = np.array([self.terms[t_]
-                                      for t_ in token], dtype=np.string_)
+                    token = np.array(self.terms[token], dtype=np.str_)
 
             else:
 
-                if strings:
+                token = t
 
-                    token = np.ma.array(t, mask=t.mask, dtype=np.string_)
+                if as_strings:
 
-                elif t.shape[0] == 0:
-
-                    token = np.ma.array([], dtype=np.corpus.dtype)
-                    
-                else:
-
-                    token = t
+                    token = np.ma.array(self.terms[token.data],
+                                        mask=token.mask,
+                                        dtype=np.str_)
 
             token_list.append(token)
 
@@ -762,24 +766,31 @@ class MaskedCorpus(Corpus):
 
         c = MaskedCorpus([])
 
-        if 'corpus_data' in arrays_in:
-            c.corpus = np.ma.array(arrays_in['corpus_data'],
-                                   mask=arrays_in['corpus_mask'])
+        c.corpus.data = arrays_in['corpus_data']
 
-        c.terms = np.ma.array(arrays_in['terms_data'],
-                              mask=arrays_in['terms_mask'])
+        c.corpus.mask = arrays_in['corpus_mask']
+
+        c.terms.data = arrays_in['terms_data']
+
+        c.terms.mask = arrays_in['terms_mask']
+
+        c.tok_names = arrays_in['tok_names'].tolist()
+
+        c.tok_data = list()
+
+        for n in c.tok_names:
+
+            t = arrays_in['tok_data_' + n].tolist()
+
+            c.tok_data.append(t)
 
         c.__set_terms_int()
-
-        for k in arrays_in:
-            if k.endswith('_indices') or k.endswith('_metadata'):
-                c.tok[k] = arrays_in[k]
 
         return c
 
 
 
-    def save(self, file, terms_only=False, compress=False):
+    def save(self, file):
         """
         Saves data from a MaskedCorpus object as an `npz` file.
         
@@ -788,9 +799,6 @@ class MaskedCorpus(Corpus):
         file : str-like or file-like object
             Designates the file to which to save data. See
             `numpy.savez` for further details.
-        terms_only : boolean
-            Saves only `terms` and `masked_terms` if true. Default is
-            `False`.
 
         Returns
         -------
@@ -802,30 +810,30 @@ class MaskedCorpus(Corpus):
         MaskedCorpus.load
         numpy.savez
         """
-        if compress:
+        print 'Saving masked corpus as', file
 
-            self.compressed_corpus().save(file, terms_only=terms_only)
-
-        else:
+        arrays_out = dict()
         
-            print 'Saving masked corpus as', file
+        arrays_out['corpus_data'] = self.corpus_data
         
-            arrays_out = dict()
+        arrays_out['corpus_mask'] = self.corpus_mask
+        
+        arrays_out['terms_data'] = self.terms_data
 
-            if not terms_only:
-                arrays_out.update(self.tok)
-                
-                arrays_out['corpus_data'] = self.corpus.data
-                arrays_out['corpus_mask'] = self.corpus.mask
+        arrays_out['terms_mask'] = self.terms_mask
 
-            arrays_out['terms_data'] = self.terms.data
-            arrays_out['terms_mask'] = self.terms.mask
+        arrays_out['tok_names'] = np.asarray(self.tok_names)
 
-            np.savez(file, **arrays_out)
+        for i in xrange(len(self.tok_data)):
+
+            key = 'tok_data_' + self.tok_names[i]
+
+            arrays_out[key] = self._tok_to_recarray(i)
+
+        np.savez(file, **arrays_out)
 
 
-
-
+        
     def to_corpus(self, compress=False):
         """
         Returns a Corpus object containing the data from the
@@ -836,7 +844,7 @@ class MaskedCorpus(Corpus):
             print 'Compressing corpus terms'
 
             # Reconstruct string representation of corpus
-            corpus = [self.terms[term] for term in self.corpus.compressed()]
+            corpus = self.terms[self.corpus.compressed()]
 
             tok_names = self.tok_names
 
@@ -964,9 +972,9 @@ def test_compression():
 
     cc = c.to_corpus(compress=True)
 
-    t1 = c.view_tokens('random', compress=True, strings=True)
+    t1 = c.view_tokens('random', compress=True, as_strings=True)
 
-    t2 = cc.view_tokens('random', strings=True)
+    t2 = cc.view_tokens('random', as_strings=True)
 
     assert len(t1) == len(t2)
 
@@ -982,19 +990,19 @@ def test_compression():
         
 def test_view_tok():
 
-    c = random_corpus(1e3, 10, 1, 5, metadata=True)
+    c = random_corpus(20, 3, 1, 5, metadata=True)
 
     c = c.to_maskedcorpus()
 
     mask_from_stoplist(c, ['0'])
 
-    print c.view_tokens('random', compress=False, strings=False)
+    print c.view_tokens('random', compress=False, as_strings=False)
 
-    print c.view_tokens('random', compress=True, strings=False)
+    print c.view_tokens('random', compress=True, as_strings=False)
 
-    print c.view_tokens('random', compress=False, strings=True)
+    print c.view_tokens('random', compress=False, as_strings=True)
     
-    print c.view_tokens('random', compress=True, strings=True)
+    print c.view_tokens('random', compress=True, as_strings=True)
 
     return c
 

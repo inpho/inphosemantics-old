@@ -6,6 +6,7 @@ import multiprocessing as mp
 import numpy as np
 from numpy import dual
 
+from inphosemantics import corpus as corp
 from inphosemantics import model
 from inphosemantics.model import beagleenvironment as be
 
@@ -168,23 +169,33 @@ class BeagleOrderSingle(model.Model):
 
         self.matrix = np.zeros_like(env_matrix)
 
-        sents = corpus.view_tokens(tok_name)
+
+
+        if isinstance(corpus, corp.MaskedCorpus):
+
+            sents = corpus.view_tokens(tok_name, unmask=True)
+
+        else:
+
+            sents = corpus.view_tokens(tok_name)
 
         for sent in sents:
 
             for i in xrange(sent.shape[0]):
 
-                left = [env_matrix[term] for term in sent[:i]]
+                if corpus.terms[sent[i]] is not np.ma.masked:
+                    
+                    left = [env_matrix[term] for term in sent[:i]]
 
-                right = [env_matrix[term] for term in sent[i+1:]]
+                    right = [env_matrix[term] for term in sent[i+1:]]
+                    
+                    sent_vecs = np.array(left + [psi] + right)
+                    
+                    conv_ngrams = reduce_ngrams(b_conv, sent_vecs, lmda, i)
+                    
+                    ord_vec = np.sum(conv_ngrams, axis=0)
 
-                sent_vecs = np.array(left + [psi] + right)
-
-                conv_ngrams = reduce_ngrams(b_conv, sent_vecs, lmda, i)
-
-                ord_vec = np.sum(conv_ngrams, axis=0)
-
-                self.matrix[sent[i], :] += ord_vec
+                    self.matrix[sent[i], :] += ord_vec
 
 
 
@@ -198,7 +209,7 @@ class BeagleOrderMulti(model.Model):
               n_columns=2048,
               lmda = 7,
               tok_name='sentences',
-              processes=20):
+              n_processes=20):
 
         global _lmda
 
@@ -262,27 +273,41 @@ class BeagleOrderMulti(model.Model):
 
         print 'Gathering tokens over which to map'
 
-        sent_lists = corpus.view_tokens(tok_name)
+        if isinstance(corpus, corp.MaskedCorpus):
 
-        k = len(sent_lists) / (n_processes - 1)
+            sents = corpus.view_tokens(tok_name, unmask=True)
+
+        else:
+
+            sents = corpus.view_tokens(tok_name)
+
+        k = len(sents) / (n_processes - 1)
         
-        sent_lists_ = [sent_lists[i * k:(i + 1) * k]
-                       for i in xrange(n_processes - 1)]
-
-        sent_lists_.append(sent_lists[(i + 1) * k:])
-
+        sent_lists = [sents[i * k:(i + 1) * k]
+                      for i in xrange(n_processes - 1)]
+        
+        sent_lists.append(sents[(i + 1) * k:])
+        
         tmp_dir = tempfile.mkdtemp()
         
         tmp_files = [os.path.join(tmp_dir, 'tmp_' + str(i))
-                     for i in xrange(len(sent_lists_))]
+                     for i in xrange(len(sent_lists))]
 
-        sent_lists = [(sent_lists_[i], tmp_files[i])
-                      for i in xrange(len(sent_lists_))]
+        sent_lists = [(sent_lists[i], tmp_files[i])
+                      for i in xrange(len(sent_lists))]
 
-        del sent_lists_
+        del sents
+
+
+
+        global _terms
+
+        _terms = corpus.terms
+
+        del corpus
+
 
         
-
         try:
 
             # For debugging
@@ -325,19 +350,21 @@ def mpfn((sents, filename)):
 
         for i,t in enumerate(sent):
 
-            left = [np.asarray(_env_matrix[term * n:(term + 1) * n])
-                    for term in sent[:i]]
-        
-            right = [np.asarray(_env_matrix[term * n:(term + 1) * n])
-                     for term in sent[i + 1:]]
-        
-            sent_vecs = np.array(left + [_psi] + right)
-        
-            conv_ngrams = reduce_ngrams(_b_conv, sent_vecs, _lmda, i)
-            
-            ord_vec = np.sum(conv_ngrams, axis=0)
+            if _terms[sent[i]] is not np.ma.masked:
 
-            result[t] += ord_vec
+                left = [np.asarray(_env_matrix[term * n:(term + 1) * n])
+                        for term in sent[:i]]
+        
+                right = [np.asarray(_env_matrix[term * n:(term + 1) * n])
+                         for term in sent[i + 1:]]
+        
+                sent_vecs = np.array(left + [_psi] + right)
+        
+                conv_ngrams = reduce_ngrams(_b_conv, sent_vecs, _lmda, i)
+            
+                ord_vec = np.sum(conv_ngrams, axis=0)
+
+                result[t] += ord_vec
 
     del result
     
@@ -361,15 +388,19 @@ def test_BeagleOrderSingle():
 
     from inphosemantics import corpus
 
-    n = 256
+    n = 5
 
-    c = corpus.random_corpus(1e4, 1e2, 1, 20, tok_name='sentences')
+    c = corpus.random_corpus(1e2, 10, 1, 10, tok_name='sentences')
+
+    c = c.to_maskedcorpus()
+
+    c.mask_terms(['0'])
     
     m = BeagleOrderSingle()
 
     m.train(c, n_columns=n)
 
-    return m.matrix
+    return c, m.matrix
 
 
 
@@ -377,11 +408,15 @@ def test_BeagleOrderMulti():
 
     from inphosemantics import corpus
 
-    n = 2048
+    n = 5
 
     print 'Generating corpus'
     
-    c = corpus.random_corpus(1e7, 1e5, 1, 20, tok_name='sentences')
+    c = corpus.random_corpus(1e2, 10, 1, 10, tok_name='sentences')
+
+    c = c.to_maskedcorpus()
+
+    c.mask_terms(['0'])
 
     m = BeagleOrderMulti()
 
@@ -398,6 +433,10 @@ def test_compare():
     n = 4
 
     c = corpus.random_corpus(1e3, 20, 1, 10, tok_name='sentences')
+
+    c = c.to_maskedcorpus()
+
+    c.mask_terms(['0'])
 
     em = be.BeagleEnvironment()
 

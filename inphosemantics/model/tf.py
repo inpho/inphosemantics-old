@@ -12,7 +12,13 @@ class TfModel(model.Model):
 
         print 'Retrieving tokens'
 
-        tokens = corpus.view_tokens(tok_name)
+        if isinstance(c, MaskedCorpus):
+
+            tokens = corpus.view_tokens(tok_name, compress=True)
+
+        else:
+
+            tokens = corpus.view_tokens(tok_name)
 
         print 'Computing term frequencies'
 

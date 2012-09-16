@@ -5,6 +5,7 @@ import multiprocessing as mp
 
 import numpy as np
 
+from inphosemantics import corpus as corp
 from inphosemantics import model
 from inphosemantics.model import beagleenvironment as be
 
@@ -26,9 +27,19 @@ class BeagleContextSingle(model.Model):
 
             env_matrix = m.matrix[:, :]
 
-        sents = corpus.view_tokens(tok_name)
-
         self.matrix = np.zeros_like(env_matrix)
+
+
+
+        if isinstance(corpus, corp.MaskedCorpus):
+
+            sents = corpus.view_tokens(tok_name, compress=True)
+
+        else:
+
+            sents = corpus.view_tokens(tok_name)
+
+
 
         for sent in sents:
 
@@ -95,24 +106,34 @@ class BeagleContextMulti(model.Model):
 
         print 'Gathering tokens over which to map'
 
-        sent_lists = corpus.view_tokens(tok_name)
+        if isinstance(corpus, corp.MaskedCorpus):
 
-        k = len(sent_lists) / (n_processes - 1)
+            sents = corpus.view_tokens(tok_name, compress=True)
+
+        else:
+
+            sents = corpus.view_tokens(tok_name)
+
+        k = len(sents) / (n_processes - 1)
         
-        sent_lists_ = [sent_lists[i * k:(i + 1) * k]
-                       for i in xrange(n_processes - 1)]
-
-        sent_lists_.append(sent_lists[(i + 1) * k:])
-
+        sent_lists = [sents[i * k:(i + 1) * k]
+                      for i in xrange(n_processes - 1)]
+        
+        sent_lists.append(sents[(i + 1) * k:])
+        
         tmp_dir = tempfile.mkdtemp()
         
         tmp_files = [os.path.join(tmp_dir, 'tmp_' + str(i))
-                     for i in xrange(len(sent_lists_))]
+                     for i in xrange(len(sent_lists))]
 
-        sent_lists = [(sent_lists_[i], tmp_files[i])
-                      for i in xrange(len(sent_lists_))]
+        sent_lists = [(sent_lists[i], tmp_files[i])
+                      for i in xrange(len(sent_lists))]
 
-        del sent_lists_
+        del sents
+
+        del corpus
+
+
 
         try:
 
@@ -156,17 +177,25 @@ def mpfn((sents, filename)):
         
         if sent.shape[0] > 1:
 
-            left_sums = [np.array(_env_matrix[sent[0] * n:(sent[0] + 1) * n])]
+            lslice = slice(sent[0] * n, (sent[0] + 1) * n)
 
-            right_sums = [np.array(_env_matrix[sent[-1] * n:(sent[-1] + 1) * n])]
+            left_sums = [np.array(_env_matrix[lslice])]
+
+            rslice = slice(sent[-1] * n, (sent[-1] + 1) * n)
+
+            right_sums = [np.array(_env_matrix[rslice])]
 
             for i in xrange(1, sent.shape[0] - 1):
 
-                next_left = np.array(_env_matrix[sent[i] * n:(sent[i] + 1) * n])
+                lslice = slice(sent[i] * n, (sent[i] + 1) * n)
+
+                next_left = np.array(_env_matrix[lslice])
 
                 left_sums.append(left_sums[-1] + next_left)
 
-                next_right = np.array(_env_matrix[sent[-i - 1] * n:(sent[-i - 1] + 1) * n])
+                rslice = slice(sent[-i - 1] * n, (sent[-i - 1] + 1) * n)
+
+                next_right = np.array(_env_matrix[rslice])
 
                 right_sums.append(right_sums[-1] + next_right)
 
@@ -209,10 +238,14 @@ def test_BeagleContextSingle():
 
     from inphosemantics import corpus
 
-    n = 2048
+    n = 5
 
-    c = corpus.random_corpus(1e5, 1e4, 1, 20, tok_name='sentences')
-    
+    c = corpus.random_corpus(1e2, 10, 1, 10, tok_name='sentences')
+
+    c = c.to_maskedcorpus()
+
+    c.mask_terms(['0'])
+        
     m = BeagleContextSingle()
 
     m.train(c, n_columns=n)
@@ -225,12 +258,16 @@ def test_BeagleContextMulti():
 
     from inphosemantics import corpus
 
-    n = 2048
+    n = 5
 
     print 'Generating corpus'
     
-    c = corpus.random_corpus(1e5, 1e4, 1, 20, tok_name='sentences')
+    c = corpus.random_corpus(1e2, 10, 1, 10, tok_name='sentences')
 
+    c = c.to_maskedcorpus()
+
+    c.mask_terms(['0'])
+    
     m = BeagleContextMulti()
 
     m.train(c, n_columns=n)
