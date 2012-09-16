@@ -7,13 +7,6 @@ import similarity
 
 class Viewer(object):
     """
-
-    
-    Notes
-    -----
-    Assume that the incoming corpus does not have a mask (i.e., has
-    already been compressed if so).
-
     """
     def __init__(self,
                  corpus=None,

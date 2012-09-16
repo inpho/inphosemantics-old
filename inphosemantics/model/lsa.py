@@ -67,6 +67,67 @@ class LsaModel(model.Model):
         
 
 
-    def save_matrix(self, file):
+    def save(self, file):
+        """
+        Saves matrix data as a numpy archive file with extension
+        `npz`. The keys for the component matrices are `term_matrix`,
+        `eigenvalues` and `doc_matrix`.
+        
+        Parameters
+        ----------
+        file : str-like or file-like object
+            Designates the file to which to save data. See
+            `numpy.savez` for further details.
+            
+        Returns
+        -------
+        None
 
-        print 'Not yet implemented'
+        See Also
+        --------
+        LsaModel.load
+        numpy.savez
+        """
+        print 'Saving matrices as', file
+        
+        arrays_out = dict()
+        
+        arrays_out['term_matrix'] = self.term_matrix
+        
+        arrays_out['eigenvalues'] = self.eigenvalues
+
+        arrays_out['doc_matrix'] = self.doc_matrix
+
+        np.savez(file, **arrays_out)
+
+
+
+    @staticmethod
+    def load(file):
+        """
+        Loads LSA matrix data from a numpy archive file with extension
+        `npz`. The expected keys for the component matrices are
+        `term_matrix`, `eigenvalues` and `doc_matrix`.
+        
+        Parameters
+        ----------
+        file : str-like or file-like object
+            Designates the file from which to load data. See
+            `numpy.load` for further details.
+            
+        Returns
+        -------
+        None
+
+        See Also
+        --------
+        LsaModel.save
+        numpy.load
+        """
+        print 'Loading LSA matrices from', file
+
+        arrays_in = np.load(file)
+
+        return (arrays_in['term_matrix'],
+                arrays_in['eigenvalues'],
+                arrays_in['doc_matrix'])
